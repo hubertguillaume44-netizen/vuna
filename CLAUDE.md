@@ -2501,6 +2501,67 @@ membres, le geste est *taper la commande*. Ici il n'y a pas de commande — il n
 un ensemble : **écrire la liste à côté du total.** Un total seul se recopie ; une liste
 recopiée se fait démentir par la première comparaison.
 
+### Sa variante la plus convaincante : un fait qui ÉTAIT vrai, lu sur un artefact
+
+Les membres du tableau remplacent un fait disponible par un fait qui n'a **jamais** été
+vrai — un brief, une impression, un écran ouvert. Celui-ci est différent, et c'est ce qui
+le rend plus difficile à refuser : le fait plausible **a été juste**, et il est écrit noir
+sur blanc sur le disque de quelqu'un.
+
+Le cas, du 19 septembre 2026 : un fichier de sauvegarde créé en **août** porte l'ancien nom
+du produit. On en a déduit que l'application propose encore ce nom par défaut à un nouveau
+venu. Mesuré : `suggestedName: 'vuna-sauvegarde.json'` dans la source (`Vuna.dc.html:20067`),
+dans l'artefact et dans ce qui est publié ; **zéro** occurrence de l'ancienne forme dans les
+fichiers versionnés.
+
+> **Un artefact date de la version qui l'a ÉCRIT, jamais de celle qui tourne.** Un fichier
+> exporté, un `.ex5` compilé, une capture d'écran, une clé de stockage : chacun est un
+> fossile, et il est d'autant plus convaincant qu'il est RÉEL. C'est un fait du disque de
+> l'utilisateur, lu comme un fait du code.
+
+**Et le dépôt agissait déjà dessus sans l'avoir nommé** — c'est l'absorption qui dit que le
+nom est le bon (règle 8). Les trois étiquettes gelées, `ANCIENS_DOSSIERS`, `OUTILS_LUS` à
+trois noms, le lecteur de journaux qui accepte les deux préfixes : ces listes existent
+**parce que** les artefacts survivent à la version qui les a écrits. Elles le disent depuis
+le côté du produit — *ce qu'on lit peut être vieux, donc on l'accepte* ; la voici depuis le
+côté du diagnostic — *ce qu'on lit ne dit pas ce que le code fait aujourd'hui, donc on ne
+le rapporte pas.*
+
+Le geste est celui du chapitre parent — la commande existait et tenait dans une ligne. Ce
+qui s'y ajoute est une question, parce qu'un artefact ne porte pas sa date en évidence :
+**quelle version a écrit ça ?**
+
+#### Et « est-ce juste aujourd'hui ? » n'est pas la question qui protège
+
+Les deux se répondent, et elles ne rendent pas la même chose :
+
+| la question | ce qui y répond | ce qu'elle laisse |
+|---|---|---|
+| « est-ce juste aujourd'hui ? » | un `grep` | un CONSTAT, vrai à la seconde où on le tape |
+| « qu'est-ce qui l'empêche de redevenir faux ? » | une MUTATION | une garde, ou la preuve qu'il n'y en a pas |
+
+Éprouvé ici : l'échange de `vuna-` vers l'ancien préfixe sur cette seule ligne fait tomber
+le registre de `nom-vuna`, **en nommant le fichier, la ligne et le littéral exact**. Sans
+cet aller-retour, on savait que le nom était bon ; on ne savait pas qu'il le resterait.
+
+> **Un constat dit où l'on en est ; une garde dit ce qui ne pourra plus arriver.** La règle
+> 2 est écrite pour les gardes neuves — elle vaut aussi quand on vient de RÉPONDRE NON à
+> un défaut supposé, et c'est le moment où on y pense le moins : rien n'est cassé, donc
+> rien ne semble à éprouver.
+
+**Et l'inventaire qui en sort vaut mieux que la réponse, par sa STRUCTURE et non par son
+total.** Douze noms de fichier téléchargés dans l'application :
+
+| | ce que c'est | ce qu'ils demandent |
+|---|---|---|
+| **cinq en littéral** | `vuna-sauvegarde.json`, `vuna-chiffre-<date>.json`, `vuna-diagnostic-<date>.txt`, `vuna_top_<date>.csv`, `scripts-mt5-vuna.zip` | le registre — ce sont les seuls à relire au prochain renommage |
+| **cinq dérivés** | le nom du robot, l'export au fil, la liste de symboles, la trace du Journal | rien : ils suivent leur source, qui a sa propre garde |
+| **deux sans marque** | `instruments-a-telecharger-<date>.txt`, `a-telecharger.txt` | rien à protéger |
+
+*Un total dit combien il y en a ; une partition dit lesquels peuvent diverger.* C'est la
+même exigence que « écrire la liste à côté du total », un cran plus loin : la liste dit ce
+qu'on a compté, la partition dit où regarder la prochaine fois.
+
 ### Le chapitre a fait rougir DEUX de ses propres lignes, dans la minute
 
 Et c'est sa meilleure provenance, parce qu'elle ne se raconte pas : elle se relit. Les
