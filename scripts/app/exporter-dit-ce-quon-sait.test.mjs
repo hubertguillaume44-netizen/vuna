@@ -33,6 +33,17 @@
 // texte dit ce qu'il est, faute de pouvoir être gardé.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+// ————— L'ÉCHANTILLON SE DÉRIVE, IL NE SE RECOPIE PLUS —————
+// Le nombre annoncé au client était écrit à la main et valait « neuf » : il n'était
+// soutenu nulle part — deux entrées du registre de travail le portaient au-dessus de
+// DEUX listes différentes. Il vient maintenant de ce que `scripts/mt5/` contient, et
+// cette garde LIE LES DEUX BOUTS : le compte ne peut pas être importé par
+// l'application (deux paquets, et un navigateur ne lit pas le dossier), donc c'est
+// ici que la divergence se voit. Déposer un cinquième rapport fait tomber ce test en
+// nommant les deux nombres — au lieu de laisser « quatre » dans le produit.
+// C'est la forme déjà écrite pour `palier-gratuit`.
+import { echantillonRejeux, EN_LETTRES } from "../mt5/echantillon-rejeux.mjs";
+const ECH = echantillonRejeux();
 import { readFileSync } from "node:fs";
 import { borne } from "../lib/tranche.mjs";
 
@@ -81,6 +92,39 @@ test("TROIS états, et « pas mesurable » ne s'écrit pas comme zéro", () => {
     + "VIDE, pas une phrase qui rassure sur ce qui n'a pas été vérifié.");
 });
 
+test("l'échantillon annoncé est celui que scripts/mt5/ peut montrer", () => {
+  // LA PRISE D'ABORD : sans rapport déposé, tout ce qui suit mesurerait le décor.
+  assert.ok(ECH.rapports >= 1,
+    "aucun rapport de rejeu dans scripts/mt5/ : la dérivation ne peut rien affirmer, "
+    + "et le texte livré annoncerait un échantillon que rien ne soutient");
+  // ————— LA GRANDEUR SUIT LE LIBELLÉ, ET C'EST LE POINT —————
+  //
+  // On compte les RAPPORTS conservés, pas les instruments rejoués. Le premier jet
+  // dérivait le nombre des instruments et l'écrivait « quatre instruments rejoués » :
+  // exact sur le nombre, FAUX sur le fait — il y a eu plus de rejeux, et ceux-là ont
+  // réellement eu lieu ; ce que le dépôt peut montrer, ce sont quatre rapports.
+  //
+  // C'est la famille du champ qui nomme mal ce qu'il porte, sous sa forme la plus
+  // difficile à voir : *la dérivation garantit le nombre, jamais son sujet.* Un chiffre
+  // irréprochable sous une étiquette qui désigne autre chose se relit comme une mesure.
+  //
+  // Et deux rapports sur un même instrument sépareraient les deux grandeurs : c'est
+  // `rapports` qui décide, parce que c'est lui que la phrase nomme.
+  const attendu = EN_LETTRES[ECH.rapports];
+  assert.ok(attendu,
+    `${ECH.rapports} rapports — au-delà de douze, EN_LETTRES ne sait plus `
+    + "écrire le nombre : étendez-la, ou passez le texte au chiffre.");
+  for (const phrase of [/corrélation lue sur (\w+) rapports de rejeu conservés/,
+    /parmi (\w+) rapports de rejeu/, /viennent de (\w+) rapports de rejeu CONSERVÉS/]) {
+    const m = phrase.exec(APP);
+    assert.ok(m, `la phrase ${phrase} a disparu du texte livré — réancrez`);
+    assert.equal(m[1], attendu,
+      `le texte livré annonce « ${m[1]} rapports » et scripts/mt5/ en porte `
+      + `${ECH.rapports} (${ECH.instruments.join(", ")}). Un échantillon écrit à la `
+      + "main redevient un compte recopié : c'est la dérivation qui fait foi.");
+  }
+});
+
 test("le mot « valide » est interdit, et l'énoncé porte son ÉCHANTILLON", () => {
   const i = borne(APP, "                  + 'Lisez la première ligne du journal du test.'");
   const aide = recoller(APP.slice(i, borne(APP, "          dragStart: (e) => {", i)));
@@ -92,7 +136,7 @@ test("le mot « valide » est interdit, et l'énoncé porte son ÉCHANTILLON", (
   assert.match(aide, /VÉRIFIÉ CONTRE LE TESTEUR \? Non pour cette ligne\./,
     "la formule convenue a disparu. Elle dit ce qui a été fait et ce qui ne l'a pas "
     + "été ; un adjectif dirait ce que la ligne EST, ce que personne ne sait.");
-  assert.match(aide, /neuf instruments rejoués chez UN courtier, sur UN compte/,
+  assert.match(aide, new RegExp(EN_LETTRES[ECH.rapports] + " rapports de rejeu CONSERVÉS chez UN courtier, sur UN compte"),
     "l'énoncé ne porte plus son échantillon. Sans lui il redevient un verdict : « le "
     + "testeur rend 7 à 11 points en moins » se lit comme une loi quand c'est une "
     + "corrélation sur neuf cas, un courtier, un compte.");

@@ -2846,7 +2846,8 @@ d'accuser la garde — sans quoi elle passait deux fois pour aveugle à tort.
 ## Un champ qui nomme mal ce qu'il porte coûte plus cher qu'un champ absent
 
 **Quatre fois, un libellé d'écran a envoyé chercher un défaut là où il n'y en avait
-pas.** Aucun n'était un bug : dans les quatre cas le code calculait juste, et c'est le
+pas** — et le chapitre en porte trois de plus depuis, dont un où le nombre était
+dérivé et irréprochable. Aucun n'était un bug : dans les quatre cas le code calculait juste, et c'est le
 MOT au-dessus du nombre qui mentait sur la grandeur.
 
 | Le champ | Ce qu'il annonçait | Ce qu'il portait | Ce que ça a coûté |
@@ -2903,6 +2904,37 @@ compte, une date lisible ailleurs —, la prise cesse d'être la prose et devien
 valeur. Une garde pourra alors vérifier que le champ « Période couverte » porte bien la
 période du résultat, parce que les deux sont calculables. Tant que la grandeur n'est
 lisible que dans le mot, il n'y a rien à quoi s'accrocher.
+
+### Une DÉRIVATION garantit le nombre, jamais son sujet
+
+C'est la forme la plus difficile à voir de cette famille, parce que **le chiffre est
+irréprochable** : il ne vient plus de la mémoire de personne, il se recalcule à la
+demande, et une garde le tient. Tout ce qui rendait les six autres suspects a disparu —
+sauf le mot.
+
+Le cas mesuré, le 19 septembre 2026. L'échantillon annoncé au client, longtemps écrit
+« neuf » sans soutien, a été **dérivé de ce que `scripts/mt5/` contient** : quatre. Le
+nombre est exact, la garde le lie au texte livré, et il monte tout seul au prochain
+dépôt. Et la phrase disait **« quatre instruments rejoués »**, ce qui est faux : il y a eu
+PLUS de rejeux, et ceux-là ont réellement eu lieu. Ce que le dépôt peut montrer, ce sont
+quatre **rapports conservés**.
+
+> **Une dérivation garantit le nombre, jamais son sujet.** Elle répond à « combien y
+> en a-t-il ? » sans qu'on ait jamais posé « de quoi ? » — et un chiffre calculé sous une
+> étiquette qui désigne autre chose se relit comme une mesure, avec toute l'autorité
+> d'une mesure.
+
+**Et l'angle mort déclaré ne suffisait pas, ce qui est l'enseignement.** La garde le
+portait en toutes lettres — *« elle compte les rapports qui sont là, pas les rejeux qui
+ont eu lieu »* — et c'était juste. Mais :
+
+> **Un angle mort écrit dans la garde protège le lecteur du dépôt ; écrit dans le
+> LIBELLÉ, il protège le client — qui ne lira jamais la garde.** Quand la phrase est
+> rendue à quelqu'un d'extérieur, la déclaration doit voyager DANS le mot, pas à côté.
+
+La grandeur dérivée a donc suivi le mot : on compte les **rapports**, pas les
+instruments. Les deux valent quatre aujourd'hui et se sépareraient dès que deux rapports
+porteraient le même instrument — c'est celle que la phrase NOMME qui décide.
 
 ### Un correctif juste sur sa CIBLE et faux sur ce qu'il TOUCHE
 
@@ -4086,6 +4118,68 @@ répondre.
 > **Le proxy le plus tentant, pour une garde, est le mécanisme de ce qu'elle garde.** La
 > question à se poser en l'écrivant : *est-ce que je vérifie le RÉSULTAT, ou la façon
 > dont il a été obtenu ?* La seconde passe quand le mécanisme est cohérent et faux.
+
+#### Et un cran plus loin : une prise DÉRIVÉE de ce qu'elle vérifie
+
+Le proxy lit le mécanisme ; celui-ci **calcule sa valeur attendue depuis le sujet**. La
+différence n'est pas de degré, et c'est ce qui décide de ce qu'on peut en espérer :
+
+> **La règle 1 met en jeu DEUX faits distincts, dont l'un approxime l'autre. Ici il n'y
+> en a qu'UN, consulté deux fois.** Ce n'est pas une approximation, c'est une tautologie.
+
+**Et la conséquence est le seul argument qui compte.** Un proxy finit par diverger — le
+jour où l'intention et le résultat se séparent, il se trahit, et ce fichier porte six
+occasions où c'est arrivé. **Une prise circulaire ne diverge jamais** : verte
+aujourd'hui, verte dans six mois, verte quand le code est faux. *C'est le seul mode de
+panne de ce fichier qui n'a aucune date de péremption.*
+
+**Le test se fait à l'écriture, et il est exécutable sans rien lancer** — ce qui est rare
+ici : *si le code était faux, d'où viendrait ma valeur attendue ?* Si la réponse est
+« du code », la garde est vacue avant d'exister.
+
+**Les membres, énumérés** — la forme que ce fichier prescrit pour une phrase sur un
+ensemble :
+
+| l'instance | ce qui était dérivé de quoi |
+|---|---|
+| **élire le segment qui RESSEMBLE au symbole** (proposée, refusée le 19/09/2026) | le segment choisi **par** le symbole, puis comparé au symbole : `concorde` n'aurait plus jamais valu `false` |
+| `panneau-mesure-ce-quil-affiche`, première forme | la signature enregistrée comparée à celle du panneau — **elle l'est par construction**, quoi qu'on ait mesuré |
+| la **convergence des lecteurs de signature**, une semaine plus tôt | quatre lecteurs ramenés à UNE valeur : le désaccord fermé, sans que personne demande ce que la valeur décrivait |
+
+**LA TROISIÈME EST CELLE QUI ÉLARGIT LA CLASSE, et c'est pour ça qu'elle y entre.** Rien
+n'y a l'air circulaire : quatre lecteurs distincts, qu'on fait coïncider. Et pourtant
+l'accord était **garanti** — ils dérivaient du même fait. *Faire coïncider deux dérivées
+d'un fait ne dit rien sur le fait.* La classe n'est donc pas « la garde se cite
+elle-même » mais, plus largement :
+
+> **Un accord qui ne peut pas échouer ne mesure rien.** Qu'il vienne d'une valeur
+> attendue calculée depuis le sujet, ou de deux dérivées d'une même source qu'on
+> rapproche : dans les deux cas l'égalité est vraie par construction, donc elle ne porte
+> aucune information — et elle a exactement l'aspect d'une vérification qui passe.
+
+*(L'identifiant de cette troisième instance n'est plus dans le source : il est parti avec
+le bouton « Mesurer ». `git log -S` le retrouve ; le fichier, non.)*
+
+**Le remède était déjà écrit, sous sa forme positive** : *un recompte ne peut pas hériter
+de l'erreur qu'il vérifie.* Une garde qui REFAIT la mesure ne partage que ses entrées ;
+une garde qui relit la comptabilité autour d'elle partage le raisonnement qu'elle
+contrôle.
+
+##### Et trois candidats à une même ancre n'étaient pas trois degrés d'une solution
+
+Le cas du 19/09 vaut d'être gardé parce que les trois avaient l'air d'une gradation —
+du plus grossier au plus fin — et que **deux sont des impasses** :
+
+| l'ancre | ce qu'elle vaut |
+|---|---|
+| **la position** (« le segment 1 ») | FRAGILE : elle a cassé le jour où l'application a inséré l'étiquette de compte, et « le segment 2 » recasserait au suivant |
+| **la ressemblance au symbole** | CIRCULAIRE : la prise dérivée de ce qu'elle vérifie — le refus survit en apparence et cesse d'attraper l'accident |
+| **la composition** (le segment qui PRÉCÈDE `Achat`/`Vente`) | INDÉPENDANTE du symbole, donc le refus tient ; et VÉRIFIABLE contre `nomRobot`, donc elle ne peut pas décrire une règle que le générateur n'applique plus |
+
+> **Quand plusieurs ancres se présentent, elles ne se classent pas sur la robustesse mais
+> sur deux questions qui se posent AVANT elle** : *est-elle indépendante de ce qu'elle
+> sert à vérifier ?* et *quelque chose dans le dépôt peut-il la démentir ?* Une ancre qui
+> échoue à la première est vacue ; une ancre qui échoue à la seconde est un commentaire.
 
 ## Trois périodes confondues en une, et le R par an récompensait l'extinction
 

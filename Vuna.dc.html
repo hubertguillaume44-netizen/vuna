@@ -12302,7 +12302,7 @@ GROUPES = {
   // ————— CE QU'ON SAIT DE CETTE LIGNE, ET RIEN DE PLUS —————
   //
   // La question du produit au moment d'exporter est « ce robot fera-t-il ce que cette
-  // ligne annonce ? ». Trois faits la prédisaient sur neuf instruments rejoués, et les
+  // ligne annonce ? ». Trois faits la prédisaient sur les instruments rejoués, et les
   // trois vivaient déjà dans l'application, SÉPARÉMENT — donc lisibles par personne
   // ensemble, au moment où la promesse se fait.
   //
@@ -12311,7 +12311,7 @@ GROUPES = {
   //   reprise fidèle                             INCOMPLÈTE sur les trois non comparables
   //
   // LE MOT « VALIDE » EST INTERDIT ICI, et c'est la règle du statut appliquée à un écran
-  // que voit un client. Ce qu'on a est une CORRÉLATION sur neuf instruments, un seul
+  // que voit un client. Ce qu'on a est une CORRÉLATION lue sur les rapports de rejeu
   // courtier, un seul compte, mesurée sur le poste de l'utilisateur — pas une loi. Une
   // phrase qui dirait « valide » promettrait ce qu'aucune mesure ne soutient. L'énoncé
   // porte donc son ÉCHANTILLON : sans lui il redevient un verdict.
@@ -12337,9 +12337,11 @@ GROUPES = {
     } else if (d.ecartees > 0) {
       out.push('Cette série porte ' + d.ecartees.toLocaleString('fr-FR') + ' bougies '
         + 'RETIRÉES par la fenêtre horaire homogène — elles n\u2019entrent dans aucune '
-        + 'mesure. Sur les deux instruments dans ce cas parmi neuf rejoués, le testeur '
+        + 'mesure. Sur les deux instruments dans ce cas parmi quatre rapports de rejeu '
+        + 'conservés, le testeur '
         + 'MT5 a rendu 7 à 11 points de réussite EN MOINS que Vuna. C\u2019est une '
-        + 'corrélation sur neuf instruments chez un seul courtier, pas une règle.');
+        + 'corrélation lue sur quatre rapports de rejeu conservés chez un seul '
+        + 'courtier, pas une règle.');
     }
     // la reprise : le critère est celui dont le Backtest tire déjà `varianteRatee`
     if (!this.cfgDeLigne(v)) {
@@ -17375,7 +17377,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260919.3';
+  VERSION_APP = '260919.4';
   signature(cfg) { return this.MOTEUR_V + '|' + this.state.btSym + '|' + this.state.ut + '|' + JSON.stringify(cfg); }
   // tout réglage relance le test : impossible de lire un chiffre qui ne correspond pas à l'écran.
   // Mais un backtest complet par frappe fige l'interface : on regroupe les
@@ -27640,7 +27642,7 @@ GROUPES = {
                   + ((r) => (r.length
                     ? '\n\nCE QU\u2019ON SAIT DE CETTE LIGNE — ' + r.join(' ')
                       + '\n\nVÉRIFIÉ CONTRE LE TESTEUR ? Non pour cette ligne. Les '
-                      + 'repères ci-dessus viennent de neuf instruments rejoués chez UN '
+                      + 'repères ci-dessus viennent de quatre rapports de rejeu CONSERVÉS chez UN '
                       + 'courtier, sur UN compte, mesurés hors de Vuna. Ils indiquent où '
                       + 'regarder ; ils n\u2019attestent rien.'
                     : ''))(this.reservesExport(v)) };
