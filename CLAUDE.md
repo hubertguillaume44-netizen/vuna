@@ -5155,12 +5155,58 @@ pour la même raison : il sème l'ancien préfixe pour éprouver la migration.
 LE DÉPÔT, au rendu, sur le fichier livré.**
 
 La garde évidente, après un renommage, est une garde de source : *aucun « Véna » dans le
-dépôt*. Elle est fausse, et le chiffre le dit — **213 occurrences de l'ancien nom, bornes
-de mot comprises, survivent dans les fichiers versionnés ; ZÉRO atteint un écran.** (Dont
-trente-trois dans ce fichier-ci, qui raconte des défauts survenus sous trois noms.) Les clés gelées,
-le registre, les replis MT5, les récits de
-ce fichier-ci : la source a le DROIT de porter l'ancien nom, et une garde qui l'interdirait
-partout se ferait désactiver le premier jour (règle 16).
+dépôt*. Elle est fausse, et le chiffre le dit — **l'ancien nom survit par centaines dans
+les fichiers versionnés ; ZÉRO atteint un écran.** Les clés gelées, le registre, les replis
+MT5, les récits de ce fichier-ci : la source a le DROIT de porter l'ancien nom, et une
+garde qui l'interdirait partout se ferait désactiver le premier jour (règle 16).
+
+**LE CHIFFRE EST ÉCRIT AVEC SA COMMANDE, et c'est la commande qui compte.** Ce paragraphe
+a longtemps porté « 213 occurrences » et « trente-trois dans ce fichier-ci » sans dire
+comment on les obtenait. Le nombre n'était ni vérifiable ni réfutable : personne ne pouvait
+le contredire, donc personne ne l'a contredit — *un compte posé sans sa commande est un
+compte recopié en puissance.* Il n'est pas corrigé ici, parce qu'on ne sait pas ce qu'il
+comptait : le remplacer fabriquerait une comparaison entre deux populations qu'on n'a pas
+établies être la même.
+
+Ce qui suit est une commande et **ce qu'elle rend le 19 septembre 2026**. Le prochain qui
+recompte saura quoi recompter :
+
+```sh
+# le dépôt entier — 303
+git ls-files -z | xargs -0 grep -ohiE '\b(vena|véna)\b' | wc -l
+# ce fichier-ci seul — 59, le bloc que vous lisez COMPRIS
+grep -ohiE '\b(vena|véna)\b' CLAUDE.md | wc -l
+# la population que la GARDE police : le dépôt privé des deux auto-exclus — 213
+git ls-files -z | grep -zv -e '^CLAUDE.md$' -e '^scripts/app/nom-vuna.test.mjs$' \
+  | xargs -0 grep -ohiE '\b(vena|véna)\b' | wc -l
+```
+
+**ET LES DEUX PREMIÈRES SE COMPTENT ELLES-MÊMES.** Ce bloc a fait passer ce fichier de
+53 à 59 et le dépôt de 297 à 303 : un compte d'un fichier, écrit DANS ce fichier, bouge en
+s'écrivant. Ce n'est pas un défaut, c'est une propriété — mais elle se dit, sans quoi le
+prochain qui recompte croira lire une dérive là où il lit sa propre plume. La troisième
+commande, elle, exclut ce fichier : c'est la seule des trois qu'une phrase écrite ici ne
+peut pas déplacer.
+
+**LA TROISIÈME REND 213, ET CE N'EST PAS UNE PREUVE.** Elle retombe exactement sur
+l'ancien chiffre, ce qui est troublant et ne tranche rien : le dépôt a grandi depuis, donc
+une égalité aujourd'hui ne dit pas qu'hier la même commande était employée. Mesuré au
+commit qui pose le chiffre (`5dcfeb7`, 18:09) : le dépôt entier y rendait **196** et ce
+fichier **47** — ni l'un ni l'autre n'est 213 ou 33. *Trois populations plausibles, une
+qui tombe juste, et aucun moyen de savoir si c'est la bonne* — voilà exactement ce que
+coûte un chiffre sans sa commande.
+
+> **Une égalité rétrospective n'établit pas la méthode qui l'a produite.** C'est la même
+> figure que « deux entrées d'accord sur un total et en désaccord sur leur contenu » : ici
+> deux comptes d'accord sur un total, sans qu'on sache s'ils portent sur la même
+> population. La coïncidence est notée parce qu'elle est un fait ; elle n'est pas conclue.
+
+**Et le piège s'est refermé sur l'auteur de la commande, dans l'heure.** Ayant mesuré 297
+là où le fichier disait 213, j'ai rapporté une dérive — c'est-à-dire que j'ai comparé deux
+comptes sur des populations disjointes pour en tirer une direction, le défaut que la note
+du bouton Exporter interdit en toutes lettres trois cents lignes plus bas. **La commande
+manquante ne fait pas que rendre un chiffre invérifiable : elle fabrique des écarts qui
+n'existent pas.**
 
 > **Ce n'est pas le dépôt qui porte une marque, c'est un écran.** La question n'est donc
 > pas « le mot est-il écrit quelque part ? » — une intention — mais « l'ancien nom
