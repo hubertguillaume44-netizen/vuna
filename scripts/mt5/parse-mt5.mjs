@@ -29,7 +29,30 @@ export function lireFichierMt5(chemin) {
   let nuls = 0;
   const n = Math.min(b.length, 4096);
   for (let i = 1; i < n; i += 2) if (b[i] === 0) nuls++;
-  return nuls > n / 4 ? b.toString("utf16le") : b.toString("utf8");
+  const txt = nuls > n / 4 ? b.toString("utf16le") : b.toString("utf8");
+  // ————— LE REPLI NE SE TAIT PLUS (règle 15) —————
+  //
+  // Les deux lignes ci-dessus DEVINENT, sur une proportion d'octets nuls : un rapport
+  // sans marque d'ordre, réenregistré par un autre terminal ou par un éditeur, peut
+  // tomber du mauvais côté. Le décodage rate alors en SILENCE, et le texte rendu ne
+  // porte plus une seule balise — si bien que l'appelant lit « zéro trade » et le
+  // prend pour un rapport vide. *Un zéro de décodage raté est indistinguable d'un
+  // rapport sans trades*, et c'est le pire mode de panne de ce dépôt.
+  //
+  // LA PRISE EST LE CARACTÈRE NUL, et elle n'a aucun faux refus : un texte
+  // correctement décodé n'en porte jamais — ni le HTML de MT5, ni un copier-coller,
+  // ni un CSV. Sa présence PROUVE que la lecture a échoué, elle ne le suppose pas.
+  if (txt.includes("\u0000")) {
+    throw new Error(
+      `« ${chemin} » n'a pas pu être décodé : le texte obtenu porte des caractères `
+      + "nuls, signe d'un fichier UTF-16 lu comme de l'UTF-8. Aucune marque d'ordre "
+      + "des octets n'a été trouvée et la proportion d'octets nuls n'a pas tranché. "
+      + "Réenregistrez le rapport depuis MT5 (clic droit sur l'onglet Backtest → "
+      + "Rapport → HTML), qui écrit la marque d'ordre — ou convertissez-le en UTF-8. "
+      + "Sans ça, la lecture rendrait ZÉRO trade, indistinguable d'un rapport vide.",
+    );
+  }
+  return txt;
 }
 
 const ENTITES = {
@@ -232,11 +255,51 @@ export function contexteRapport(texte) {
     const m = bout.match(/Symbole\s*:\s*\n*\s*([A-Za-z#][\w#.]{1,24})/);
     symbole = m ? m[1] : null;
   }
-  // le nom du robot porte l'instrument entre « Vuna_ » et le sens
-  const attendu = expert ? expert.split("_")[1] : null;
-  const norm = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const concorde = !expert || !symbole ? null : norm(symbole).includes(norm(attendu));
+  const attendu = instrumentDeExpert(expert);
+  // TROIS ÉTATS, ET LE TROISIÈME N'EST PAS UN REFUS : sans instrument identifié ou
+  // sans symbole lu, on ne sait pas — et on ne peut donc pas accuser. Un refus posé
+  // sur une incertitude est exactement le faux refus qui vient de mordre.
+  const concorde = !symbole || !attendu ? null : memeInstrument(symbole, attendu);
   return { expert, symbole, attendu, concorde };
+}
+
+/**
+ * L'instrument, lu dans le nom d'expert — ANCRÉ SUR LE SENS, JAMAIS SUR UN RANG.
+ *
+ * `nomRobot` compose `Vuna_<sym>_<Achat|Vente>_…` : l'instrument est le segment qui
+ * PRÉCÈDE le sens, à quelque profondeur qu'il se trouve. L'ancrage par rang — « le
+ * segment 1 » — a accusé quatre rapports valides le jour où l'application a inséré
+ * l'étiquette de compte après « Vuna_ » (`etiquetteCompte`), et « le segment 2 »
+ * recasserait au prochain segment inséré : ce serait la seconde fois.
+ *
+ * ET LE CHOIX NE PEUT PAS SE FAIRE EN COMPARANT AU SYMBOLE DU RAPPORT. Élire le
+ * segment qui ressemble le plus au symbole serait circulaire : l'élu concorderait
+ * toujours, `concorde` ne vaudrait jamais `false`, et le refus cesserait d'attraper
+ * l'accident pour lequel il existe — un robot posé sur le graphique d'un autre
+ * instrument. La prise doit être INDÉPENDANTE de ce qu'elle sert à vérifier.
+ *
+ * ANGLE MORT, déclaré : `Achat`/`Vente` est un vocabulaire fermé émis par `nomRobot`,
+ * et rien ici ne l'exécute. `scripts/mt5/rapport-lit-son-instrument.test.mjs` fait
+ * donc tourner `nomRobot` et relit sa composition — sans quoi ce commentaire
+ * décrirait une règle que personne n'applique plus.
+ */
+export function instrumentDeExpert(expert) {
+  const seg = String(expert || "").split("_");
+  const i = seg.findIndex((s) => s === "Achat" || s === "Vente");
+  return i > 0 ? seg[i - 1] : null;
+}
+
+/**
+ * Deux noms désignent-ils le même instrument ? La règle du dépôt, celle que le robot
+ * applique lui-même (`robot-tient-son-symbole`) : noyau en capitales, tout caractère
+ * non alphanumérique retiré, et l'un préfixe ou suffixe de l'autre. C'est ce qui fait
+ * qu'un courtier écrivant `#HongKong50` ne produit pas un refus sur `HongKong50`.
+ */
+export function memeInstrument(a, b) {
+  const noyau = (x) => String(x || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+  const na = noyau(a), nb = noyau(b);
+  if (!na || !nb) return null;
+  return na.startsWith(nb) || na.endsWith(nb) || nb.startsWith(na) || nb.endsWith(na);
 }
 
 /**
