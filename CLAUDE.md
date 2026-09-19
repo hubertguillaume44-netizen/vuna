@@ -2458,6 +2458,25 @@ phrase sur un ensemble :
 | `/tarifs` désigné pour une phrase qui vit sur l'accueil | la même | idem |
 | la phrase réécrite de mémoire au lieu d'être cherchée | la même | « La colonne gratuite » |
 | **le nom du dépôt, pris dans l'inventaire du brief** | `git ls-remote --get-url origin` | « Fichiers », plus haut |
+| **un REMÈDE attribué de mémoire** — `grep -v $$` pour la sonde qui se mesurait elle-même | `grep` sur la trace de séance : la chaîne n'y paraît que dans le message qui l'affirme | « Ce que je mesure contient-il ma mesure ? » |
+
+**ET LE DERNIER MEMBRE ÉLARGIT LA CLASSE UNE FOIS DE PLUS : ce n'est ni un nombre, ni un
+nom, c'est un MÉCANISME.** Tous les autres remplaçaient une valeur qu'une commande rend —
+un compte, un nom de dépôt, une phrase, un chemin. Celui-ci remplaçait une *explication* :
+comment une sonde avait cessé de se mesurer elle-même. Et il a tenu parce qu'il était
+cohérent avec ce qu'il expliquait.
+
+> **Un nom faux se cherche ; un mécanisme faux se raconte.** Un nombre ou un identifiant
+> appellent une commande évidente — on sait quoi taper. Un mécanisme, lui, s'accorde avec
+> le symptôme qu'il explique, donc rien n'invite à aller voir : il a la forme d'une
+> compréhension, et c'est la forme qui fait s'arrêter.
+
+**Le dépôt en portait déjà un second sans l'avoir rangé ici** — *« le brief initial disait
+« prix mélangés » : c'était un contresens sur le null »*, au chapitre du contrôle du
+hasard. Deux instances, aucune reliée, et la raison est dans le nom : l'énoncé disait
+**fait**, et un mécanisme n'a pas l'air d'en être un. La commande ne change pas pour
+autant — pour un mécanisme de séance, c'est la trace ; pour un mécanisme de code, c'est le
+source. *Ce qui change, c'est qu'il faut penser à la taper.*
 
 **LE DERNIER EST LE PLUS INSTRUCTIF PARCE QU'IL N'EST PAS UN NOMBRE**, et c'est lui qui a
 forcé le renommage de la classe. Le brief du renommage disait « le dépôt GitHub : `vena` →
