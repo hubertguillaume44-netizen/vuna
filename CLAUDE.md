@@ -5135,6 +5135,67 @@ fenêtre figée, sur un référentiel qu'on n'aurait pas pensé y ranger.
 Les deux référentiels s'écrivent donc tous les deux, plutôt qu'un chemin qui a l'air
 général. C'est la garde `aucun-voisin` qui l'a dit, et elle avait raison.
 
+## Ce que je mesure contient-il ma mesure ?
+
+**C'est la voisine de la règle 15, et elles ne se confondent pas.** Là, une sonde se tait
+quand elle échoue, donc rien en elle ne dira jamais qu'elle a cessé de marcher — *le
+témoin ne peut pas être son propre témoin*. Ici la sonde parle très bien : elle rapporte
+un chiffre juste, sur une population **qui la contient**.
+
+> **Une sonde dont le motif peut décrire la sonde elle-même ne mesure pas ce qu'elle
+> croit.** Et elle ne se plaint de rien : le résultat a la forme d'une mesure, parce que
+> c'en est une — d'autre chose.
+
+**Quatre instances, énumérées** — la forme que ce fichier prescrit pour une phrase sur un
+ensemble. Les deux premières sont dans le dépôt ; les deux autres sont des gestes de
+séance, relus dans la trace plutôt que de mémoire :
+
+| l'instance | ce que la mesure contenait |
+|---|---|
+| `nom-vuna.test.mjs` | il cherche une chaîne interdite, donc il doit l'épeler — et il se trouve lui-même |
+| `stockage-plein.test.mjs` | il SÈME l'ancien préfixe pour éprouver la migration, puis compte les clés |
+| l'attente de suite (`until ! pgrep -f "node --test…"`) | la ligne de commande de la boucle **contient le motif** : les boucles s'attendaient l'une l'autre, et « suite en cours » était vrai par construction |
+| le compte d'une tournure dans ce fichier-ci | le fichier compté est celui qui porte le compte : l'écrire le change |
+
+### Les quatre remèdes ne sont PAS équivalents, et la question choisit lequel
+
+C'est ce qui rend la classe utile plutôt que pittoresque. Le réflexe — exclure la sonde —
+est le moins bon des quatre, et ce dépôt ne l'emploie que là où il est borné :
+
+| le remède | quand il vaut | ce qu'il coûte |
+|---|---|---|
+| **s'exclure nommément** | quand l'interdit est le SUJET du fichier (les deux gardes ci-dessus) | c'est *ajouter un motif* — la course que la règle 3 refuse ; acceptable ici parce que l'exclusion est nominative et ne rouvre aucun périmètre |
+| **changer de SIGNAL** | quand un autre fait répond à la même question sans contenir la sonde | rien, et c'est pourquoi il gagne |
+| **converger vers un point fixe** | quand la mesure ne PEUT pas sortir de sa population | une itération, et l'obligation de le dire |
+| **rétrécir aux cas nets** | quand l'effet de la sonde atteint sa propre voie d'observation | des cas perdus — *deux concluants valent mieux que six douteux* |
+
+**LE SECOND EST CELUI QUI A SERVI, ET ON A FAILLI LUI EN ATTRIBUER UN AUTRE.** Relu dans
+la trace de séance plutôt que reconstitué : la prise fautive `until ! pgrep -f` paraît
+**16** fois, et ce qui l'a remplacée n'est pas un `grep -v` d'exclusion — c'est
+`until [ -s <fichier de sortie> ]`, **31** fois, plus `until ! kill -0 <PID>` deux fois.
+Dans les deux remplaçants, la sonde n'appartient plus à la population : un fichier a une
+taille, un PID est nommé. *On n'a pas appris à la sonde à s'ignorer ; on a cessé de poser
+la question sous une forme où elle se voyait.*
+
+Le troisième a servi le même jour, sur de la prose : un compte d'occurrences dans ce
+fichier bouge en s'écrivant — poser le bloc l'a fait passer de 53 à 59. Aucune exclusion
+n'est possible, donc on mesure, on réécrit, on remesure jusqu'au point fixe, **et on le
+dit** : sans ça le lecteur suivant lit une dérive là où il lit sa propre plume.
+
+Le quatrième est le plus discret, et c'est une sonde de MUTATION : forcer cinq fonctions à
+jeter pour voir laquelle blanchit la page, alors que quatre d'entre elles sont appelées
+par `renderVals` — la voie par laquelle la sonde observe. L'effet atteignait l'observation,
+sans qu'aucun motif ne se ressemble.
+
+> **La question ne porte pas sur le motif, elle porte sur la POPULATION.** « Mon motif
+> décrit-il ma sonde ? » n'attrape que le premier cas ; *ce que je mesure contient-il ma
+> mesure ?* attrape aussi l'effet, le fichier et le point fixe.
+
+**Et elle se pose à l'écriture de la sonde, pas à la lecture du résultat** — c'est tout ce
+qui la rend tenable. Le résultat, lui, ne dira rien : il est juste, il est stable, il ne
+se contredit pas. Une sonde qui se mesure elle-même est **cohérente**, et c'est la seule
+chose qu'elle a en commun avec une sonde qui marche.
+
 ## Le test qui tient la convention
 
 `scripts/app/nom-vuna.test.mjs` échoue si l'ancien nom réapparaît hors des neuf familles
