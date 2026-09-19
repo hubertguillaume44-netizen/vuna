@@ -2402,6 +2402,12 @@ précisément la ressource que la position de récapitulation n'a pas. Celui-ci 
 aucun : *« une sur trois, et voici laquelle »* s'écrit dans le même souffle que
 *« chacune »*, et **ne peut pas être faux**, puisqu'il ne promet que ce qu'il énumère.
 
+**À UNE CONDITION QUI A MANQUÉ UNE FOIS, et il faut l'écrire ici aussi** : que le chiffre
+et la liste soient relus L'UN CONTRE L'AUTRE. « Six commits, les voici » suivi de cinq
+entrées satisfait la forme et ne vérifie rien — voir « le compte RECOPIÉ », où le cas est
+mesuré. *Un total seul se recopie ; une liste seule rassure ; c'est leur confrontation qui
+mesure.*
+
 > **Un remède qui dépense la ressource manquante n'est pas un remède.** Quand un défaut
 > naît d'un manque de temps, la sortie n'est pas de demander plus d'attention : c'est de
 > trouver la formulation qui coûte le même effort et promet moins.
@@ -2517,8 +2523,20 @@ une copie, posées sur des populations qui ont dérivé.
 **Et c'est ce qui rend le remède différent du reste de la famille.** Pour les autres
 membres, le geste est *taper la commande*. Ici il n'y a pas de commande — il n'y a qu'une
 énumération à reprendre. D'où la forme que ce fichier prescrit déjà pour les phrases sur
-un ensemble : **écrire la liste à côté du total.** Un total seul se recopie ; une liste
+un ensemble : **relire la liste CONTRE le total.** Un total seul se recopie ; une liste
 recopiée se fait démentir par la première comparaison.
+
+**ET LE MOT « CONTRE » N'EST PAS DÉCORATIF — il manquait, et son absence a coûté une
+erreur le 19 septembre 2026.** La consigne disait « écrire la liste à côté du total », et
+elle a été suivie : *« Les six commits du jour : … »* suivi de **cinq** entrées. La forme
+prescrite était satisfaite ; l'autocontrôle qu'elle devait apporter ne l'était pas, parce
+qu'écrire les deux moitiés n'est pas les confronter. Compté après coup : six est le bon
+nombre, et c'est l'énumération qui était courte d'un — le commit du lecteur de rapports.
+
+> **Un total seul se recopie ; une liste seule rassure ; c'est leur CONFRONTATION qui
+> mesure.** C'est le cas que la règle n'avait pas, et il est plus vicieux que le nombre
+> juré : une liste ressemble à la preuve qu'on a compté. Le geste est donc DEUX choses,
+> pas une — écrire la liste, puis la relire contre le chiffre.
 
 ### Sa variante la plus convaincante : un fait qui ÉTAIT vrai, lu sur un artefact
 
