@@ -78,7 +78,8 @@ test("l'en-tête et chaque rangée ont les MÊMES pistes, mesurées", { timeout:
       const rangs = [...document.querySelectorAll(".rang")];
       return {
         tete: tete ? { pistes: getComputedStyle(tete).gridTemplateColumns,
-          cellules: tete.children.length } : null,
+          cellules: tete.children.length,
+          txt: (tete.innerText || "").replace(/\s+/g, " ").trim() } : null,
         rangs: rangs.map((r) => ({ pistes: getComputedStyle(r).gridTemplateColumns,
           cellules: r.children.length,
           periode: ((r.children[6] || {}).innerText || "").replace(/\s+/g, " ").trim(),
@@ -123,5 +124,24 @@ test("l'en-tête et chaque rangée ont les MÊMES pistes, mesurées", { timeout:
         + " ». C'est la cellule que l'en-tête avait en trop, et sa disparition "
         + "réintroduit l'écart de comptes.");
     }
+
+    // ————— ET L'EN-TÊTE DIT D'OÙ VIENT LE FORMAT —————
+    //
+    // L'assertion ci-dessus tient la FORME de la valeur ; elle ne dit pas au lecteur
+    // pourquoi cette forme-là. La question « pourquoi pas JJ/MM/AAAA ? » a été posée, et
+    // elle était légitime : rien à l'écran ne disait que le format appartient à la
+    // DESTINATION de la colonne. Les deux infobulles le disaient — et une infobulle ne
+    // s'ouvre pas toute seule, c'est la règle que ce dépôt a déjà payée deux fois.
+    //
+    // Mesuré avant d'écrire, sur les quatre rapports de `scripts/mt5/` : 5 150 dates,
+    // toutes en AAAA.MM.JJ, aucune dans une autre forme — et sur un poste en locale
+    // FRANÇAISE, ce qui écarte l'hypothèse d'un format qui suivrait la locale.
+    assert.match(mes.tete.txt, /testeur MT5/,
+      "l'en-tête de la colonne ne nomme plus le testeur : « " + mes.tete.txt + " ». Le "
+      + "format AAAA.MM.JJ n'est pas un choix d'affichage — c'est celui que MT5 attend, "
+      + "et la colonne existe pour être recopiée là-bas. Sans cette mention dans ce qui "
+      + "est LU, le format passe pour une bizarrerie et quelqu'un le « corrigera » en "
+      + "JJ/MM/AAAA, ce qui casse le seul geste que la colonne sert. Écrivez-le dans "
+      + "l'en-tête, pas dans une infobulle : une infobulle ne s'ouvre pas toute seule.");
   } finally { await nav.close(); }
 });

@@ -2530,7 +2530,20 @@
                     <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;text-align:right" class="text-muted">Pire creux</span>
                     <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;text-align:right" class="text-muted">Profit factor</span>
                     <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase" class="text-muted">Le hasard</span>
-                    <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;text-align:right" class="text-muted">Période à tester</span>
+                    <!-- LE FORMAT DE CETTE COLONNE N'EST PAS UN CHOIX D'AFFICHAGE, C'EST
+                         UNE CONTRAINTE EXTERNE — et rien à l'écran ne le disait, ce qui
+                         est pourquoi la question « pourquoi pas JJ/MM/AAAA ? » se pose.
+                         Mesuré sur les quatre rapports de `scripts/mt5/` : 5 150 dates,
+                         TOUTES en AAAA.MM.JJ, zéro dans une autre forme. Et c'est la
+                         locale qui rend la mesure décisive — ces rapports sortent d'un
+                         poste en français, où un champ dépendant de la locale aurait
+                         rendu le format local. Il rend la forme à points.
+                         La colonne existe pour être RECOPIÉE dans le testeur : elle porte
+                         donc le format de sa DESTINATION, jamais celui de son lecteur.
+                         Les deux infobulles le disaient déjà (« Reportez ces deux dates
+                         telles quelles ») — et une infobulle ne s'ouvre pas toute seule.
+                         Une contrainte qui décide d'un format vit dans ce qui est LU. -->
+                    <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px" class="text-muted">Période à tester<span style="text-transform:none;letter-spacing:0;font-size:9.5px">au format du testeur MT5</*MUT*//span></span>
                     <span></span>
                   </span>
                   <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;text-align:center" class="text-muted">Robot</span>
@@ -17377,7 +17390,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260919.4';
+  VERSION_APP = '260919.5';
   signature(cfg) { return this.MOTEUR_V + '|' + this.state.btSym + '|' + this.state.ut + '|' + JSON.stringify(cfg); }
   // tout réglage relance le test : impossible de lire un chiffre qui ne correspond pas à l'écran.
   // Mais un backtest complet par frappe fige l'interface : on regroupe les
