@@ -107,11 +107,49 @@ function bougeLeRobot(k) {
   return false;
 }
 
+// ————— LES SIX CANAUX DÉRIVÉS, EXERCÉS —————
+//
+// Le générateur ne reçoit pas que `etat` et `cfg` : le site d'appel lui passe six
+// valeurs CALCULÉES par des fonctions nommées. Un réglage peut donc atteindre le robot
+// sans que son nom paraisse jamais de l'autre côté — c'est ce qui laissait 17 rangées
+// indécises. On mesure chaque canal comme le reste, PAR MUTATION : varier le canal
+// change-t-il le `.mq5` ? Et l'attribution d'un réglage à son canal est DÉRIVÉE — la
+// clé doit paraître dans le corps du PRODUCTEUR de ce canal, tranche lue sur le disque.
+const CANAUX = [
+  { nom: "ctx.ut", src: null, cles: ["ut"], varier: (c, x) => [c, { ...x, ut: "H1" }] },
+  { nom: "ctx.risquePct", src: null, cles: ["risquePct"], varier: (c, x) => [c, { ...x, risquePct: 3 }] },
+  { nom: "ctx.paliers", src: "  paliersDe(", varier: (c, x) => [c, { ...x, paliers: [[25, 0], [50, 25]] }] },
+  { nom: "ctx.moment", src: "  momentResolu(", varier: (c, x) => [c, { ...x, moment: { type: "heure", heure: 9, medSpread: 1, medDate: "2026-01-01" } }] },
+  { nom: "ctx.heuresSession", src: null, cles: [], varier: (c, x) => [c, { ...x, heuresSession: [8, 9, 10] }] },
+  { nom: "ctx.mesureVieille", src: null, cles: [], varier: (c, x) => [c, { ...x, mesureVieille: true }] },
+  { nom: "ctx.spreadFacteur", src: "  facteurSpread()", varier: (c, x) => [c, { ...x, spreadFacteur: 7 }] },
+  { nom: "cfg.heures_entree", src: null, cles: ["btFenDeb", "btFenFin"], varier: (c, x) => [{ ...c, heures_entree: { debut: 8, fin: 17 } }, x] },
+  { nom: "cfg.fen", src: "  fenetre(etat)", varier: (c, x) => [{ ...c, fen: { m: "choisie", d: Date.UTC(2021, 0, 1), f: Date.UTC(2024, 0, 1) } }, x] },
+];
+const CTX_BASE = { risquePct: 1, ut: "D1", hasard: "x", spreadMaxPct: 0.05, stamp: "S", magic: 1 };
+const emettreX = (etat, cfg, ctx) => {
+  try { return genererMQ5({ ...BASE_CFG, ...cfg }, { ...CTX_BASE, ...ctx, etat: { ...BASE_ETAT, ...etat } }); }
+  catch (e) { return "REFUS:" + (e && e.message); }
+};
+for (const c of CANAUX) {
+  if (c.cles === undefined) {
+    const t = tranche(c.src, "\n  }\n");
+    c.cles = REGLAGES.filter((k) => mot(k).test(t));
+  }
+  // le canal bouge-t-il le robot ? mesuré depuis les deux socles, comme le reste
+  c.actif = [{}, ALLUME].some((socle) => {
+    const ref = emettreX(socle, {}, {});
+    const [cfg2, ctx2] = c.varier({}, {});
+    return emettreX(socle, cfg2, ctx2) !== ref;
+  });
+}
+const canalDe = (k) => CANAUX.filter((c) => c.actif && c.cles.includes(k)).map((c) => c.nom);
+
 const lignes = REGLAGES.map((k) => ({
   k,
   mesure: mot(k).test(MESURE) || VERS_CFG[k] !== undefined,
-  robot: bougeLeRobot(k),
-  via: VERS_CFG[k] ? "cfg." + VERS_CFG[k] : (PORTE_CTX[k] || ""),
+  robot: bougeLeRobot(k) || canalDe(k).length > 0,
+  via: VERS_CFG[k] ? "cfg." + VERS_CFG[k] : canalDe(k).join(" + "),
   g: gardes.filter(([, t]) => mot(k).test(t)).map(([n]) => n),
 }));
 
