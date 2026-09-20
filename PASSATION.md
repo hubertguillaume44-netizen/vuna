@@ -207,6 +207,15 @@ jugement de rareté : c'est une mesure datée, et c'est ce qui la fait cesser d'
 visiblement. `MOTEUR_V` n'a donc pas tourné — il n'y avait rien à périmer, pas « peu de
 monde à déranger ».
 
+**NE PAS LA CONFONDRE AVEC LE CORRECTIF DU 20/09/2026** — « aucune unité de filtre plus
+fine que l'unité de décision ». Les deux parlent d'unités et ce sont deux affaires : ici
+une unité `W1` mesurée sous l'ancien repli ; là une unité plus FINE que la décision.
+Vérifié dans le navigateur sur le fichier livré, plutôt que supposé : une unité `W1`
+survit entièrement à la nouvelle normalisation — `tendance_mtf`, `pivot` et
+`sous_resistance` la gardent sous les trois unités de décision, puisque `W1` est plus
+grossière que toutes. **Cette dette-ci n'est donc pas refermée par ce correctif**, et le
+retirer aurait perdu un cas encore atteignable.
+
 *Cette ligne vit ICI parce que son déclencheur est un événement du monde — un client qui
 enregistre une ligne `W1` — qu'aucune garde du dépôt ne peut constater. Le détail est
 dans CLAUDE.md, « L'unité d'un filtre est INERTE dans le moteur » ; une dette rangée dans

@@ -2543,7 +2543,7 @@
                          Les deux infobulles le disaient déjà (« Reportez ces deux dates
                          telles quelles ») — et une infobulle ne s'ouvre pas toute seule.
                          Une contrainte qui décide d'un format vit dans ce qui est LU. -->
-                    <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px" class="text-muted">Période à tester<span style="text-transform:none;letter-spacing:0;font-size:9.5px">au format du testeur MT5</*MUT*//span></span>
+                    <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px" class="text-muted">Période à tester<span style="text-transform:none;letter-spacing:0;font-size:9.5px">au format du testeur MT5</span></span>
                     <span></span>
                   </span>
                   <span style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;text-align:center" class="text-muted">Robot</span>
@@ -13429,9 +13429,86 @@ GROUPES = {
   }
 
 
+  // L'ordre des unites, du plus fin au plus grossier. Une seule table, lue par la
+  // normalisation de `cfgCourante`, par la porte ci-dessous et par les menus.
+  RANG_UT = { H1: 1, H4: 2, D1: 3, W1: 4 };
+
+  // ————— LES UNITES DE FILTRE SUIVENT LA DECISION — UNE PORTE, DEUX APPELANTS —————
+  //
+  // `cfgCourante` normalise deja a la RESOLUTION, et c'est la que la regle vit : un etat
+  // importe ne passe par aucun menu. Cette porte-ci tient l'AFFICHAGE. Sans elle le
+  // panneau dirait « RSI H1 » pendant que la mesure porte du D1 — un champ qui nomme mal
+  // ce qu'il porte coute plus cher qu'un champ absent, et c'est la classe que
+  // `fenetre-nest-pas-seance` a payee.
+  //
+  // Les deux endroits qui changent l'unite de decision l'appellent, plutot que de
+  // recopier la regle : deux copies divergent, et la divergence est muette.
+  //
+  // LES CLES SE DECOUVRENT DANS `REGLAGES` (regle 7) : un dixieme filtre y entre sans
+  // qu'une ligne change ici. `ut` lui-meme ne matche pas — le motif exige une capitale
+  // apres « ut ».
+  unitesSuivantDecision(v, etat) {
+    const s = etat || this.state;
+    const O2 = ['H1', 'H4', 'D1', 'W1'];
+    const rd = this.RANG_UT[String(v || 'H1').toUpperCase()] || 1;
+    const patch = { ut: v };
+    // `utMtf` garde SA regle : strictement au-dessus. Son nom promet une unite
+    // superieure, pas egale, et c'est la seule unite que le produit contraignait deja.
+    const sup2 = O2.slice(O2.indexOf(v) + 1);
+    if (!sup2.includes(s.utMtf)) patch.utMtf = sup2[0] || 'W1';
+    for (const k of this.REGLAGES) {
+      if (!/^ut[A-Z]/.test(k) || k === 'utMtf') continue;
+      if ((this.RANG_UT[String(s[k] || '').toUpperCase()] || 0) < rd) patch[k] = v;
+    }
+    return patch;
+  }
+
   cfgCourante(sym, periode, sl, rr, etat, plus) {
     const s = etat || this.state;
     const filtres = [];
+    // ————— L'UNITE D'UN FILTRE NE PEUT PAS ETRE PLUS FINE QUE LA DECISION —————
+    //
+    // `backtesterSuivi(df, cfg, ut)` re-echantillonne AVANT d'appliquer les filtres : il
+    // leur passe la serie de DECISION, jamais la H1 brute. Une unite de filtre plus fine
+    // que la decision est donc INERTE dans le moteur — et VIVANTE dans le robot, qui
+    // agrege lui-meme par `secs(etat.utRsi, 3600)`. Le produit offrait l'ecart : les
+    // menus servaient H1 quelle que soit la decision, et H1 etait le DEFAUT du RSI et de
+    // l'ADX. Mesure sur la grille : 47,1 % des variantes balayees sous une decision D1.
+    //
+    // MESURE SUR LES DIX FAMILLES D'EXEMPLE, decision D1, croisement/rebond mediane 7 :
+    //
+    //   RSI H1   955 trades cote moteur, 1 155 cote robot (+20,9 %) ; recouvrement des
+    //            jeux 64 %, soit 78 % de son plafond — quand « filtrer ou ne pas
+    //            filtrer » en laisse 97 %. |ecart R/an| median 64 %, un signe retourne.
+    //   ADX H1   805 contre 876 — +8,8 %, DANS le bruit du testeur — pour 48 % de
+    //            recouvrement (52 % du plafond) et |ecart R/an| median 80 %.
+    //
+    // LE COMPTE NET ETAIT L'INDICATEUR LE PLUS RASSURANT ET LE SEUL QUI NE LE DISAIT
+    // PAS : deux jeux de meme taille et de contenu disjoint rendent un ecart nul. Ce
+    // qu'on lit sur une ligne n'est pas un nombre de trades, c'est un R par an — et il
+    // change de signe.
+    //
+    // LA REGLE VIT ICI, PAS DANS LE MENU. Un menu qui masque une option ne la retire ni
+    // de l'etat enregistre, ni d'une sauvegarde importee, ni d'une archive de scan : un
+    // correctif pose sur les seules options serait cosmetique, et une garde qui
+    // regarderait le panneau le laisserait passer. `unite-filtre-pas-plus-fine` eprouve
+    // exactement ca — restreindre les menus sans normaliser ici la laisse ROUGE.
+    //
+    // EGALE EST INCLUSE : c'est le cas qui fonctionne aujourd'hui. Une unite absente ou
+    // illisible vaut la DECISION, jamais un defaut cache plus fin — `resamplerBrut` fait
+    // tomber tout ce qu'il ne connait pas dans le seau de 4 h, et le robot prendrait son
+    // propre defaut : deux cotes qui divergent sur ce que personne n'a ecrit.
+    //
+    // `utMtf` passe ici comme les autres et n'est JAMAIS remonte en pratique : son menu
+    // le tient STRICTEMENT au-dessus de la decision — son nom promet une unite
+    // superieure, pas egale — et ce menu est le seul que le produit contraignait deja,
+    // donc le seul filtre qui n'a jamais porte ce defaut. La remontee n'existe pour lui
+    // que sur un etat qu'aucun menu ne peut produire.
+    const utF = (u) => {
+      const rd = this.RANG_UT[String(s.ut || 'H1').toUpperCase()] || 1;
+      const x = String(u || '').toUpperCase();
+      return (this.RANG_UT[x] || 0) >= rd ? x : (s.ut || 'H1');
+    };
     // À la vente, tout filtre de tendance s'inverse : « au-dessus » devient « en
     // dessous », « hausse » devient « baisse ». Sans cela on vendrait à découvert
     // dans un marché haussier filtré comme haussier — exactement l'inverse du but.
@@ -13442,23 +13519,23 @@ GROUPES = {
     const au = vente ? 'en_dessous' : 'au_dessus';
     const sens_pente = vente ? 'baisse' : 'hausse';
     // défauts Vuna : tendance Daily sur la médiane (Tenkan) 9
-    if (s.btMtf) filtres.push({ type: 'tendance_mtf', ut: s.utMtf, ligne: s.ligneMtf, periode: Number(s.periodeMtf), sens: au });
-    if (s.fRsi) filtres.push({ type: 'rsi', ut: s.utRsi, periode: Number(s.periodeRsi),
+    if (s.btMtf) filtres.push({ type: 'tendance_mtf', ut: utF(s.utMtf), ligne: s.ligneMtf, periode: Number(s.periodeMtf), sens: au });
+    if (s.fRsi) filtres.push({ type: 'rsi', ut: utF(s.utRsi), periode: Number(s.periodeRsi),
       seuil: vente ? 100 - Number(s.fRsiSeuil) : Number(s.fRsiSeuil), sens: au });
     // l'ADX mesure la force du mouvement, pas sa direction : il ne s'inverse PAS à
     // la vente, sinon la condition écarterait justement les marchés qui bougent
-    if (s.fAdx) filtres.push({ type: 'adx', ut: s.utAdx, periode: Number(s.periodeAdx), seuil: Number(s.fAdxSeuil), sens: 'au_dessus' });
-    if (s.fNuage) filtres.push({ type: 'nuage', ut: s.utNuage, sens: au });
+    if (s.fAdx) filtres.push({ type: 'adx', ut: utF(s.utAdx), periode: Number(s.periodeAdx), seuil: Number(s.fAdxSeuil), sens: 'au_dessus' });
+    if (s.fNuage) filtres.push({ type: 'nuage', ut: utF(s.utNuage), sens: au });
     // ne rien prendre sous la moyenne mobile : le prix de clôture précédent doit être au-dessus
-    if (s.fMa) filtres.push({ type: 'ma', ut: s.utMa, periode: Number(s.periodeMa), sens: au });
+    if (s.fMa) filtres.push({ type: 'ma', ut: utF(s.utMa), periode: Number(s.periodeMa), sens: au });
     // la longueur de la ligne de pente empruntait periodeMtf (la période de la
     // TENDANCE) : régler l'une changeait l'autre en silence. periodePente prime,
     // et retombe sur l'ancien comportement quand il n'a jamais été saisi.
-    if (s.fPente) filtres.push({ type: 'pente', ut: s.utPente, ligne: s.lignePente, periode: Number(s.periodePente || s.periodeMtf), recul: Number(s.fPenteRecul), sens: sens_pente });
-    if (s.fPivot) filtres.push({ type: 'pivot', ut: s.utPivot, sens: au });
-    if (s.fResist && !vente) filtres.push({ type: 'sous_resistance', ut: s.utResist,
+    if (s.fPente) filtres.push({ type: 'pente', ut: utF(s.utPente), ligne: s.lignePente, periode: Number(s.periodePente || s.periodeMtf), recul: Number(s.fPenteRecul), sens: sens_pente });
+    if (s.fPivot) filtres.push({ type: 'pivot', ut: utF(s.utPivot), sens: au });
+    if (s.fResist && !vente) filtres.push({ type: 'sous_resistance', ut: utF(s.utResist),
       lookback: Number(s.resistLookback), marge_pct: Number(s.resistMarge) });
-    if (s.fZone && !vente) filtres.push({ type: 'zone_resistance', ut: s.utZone,
+    if (s.fZone && !vente) filtres.push({ type: 'zone_resistance', ut: utF(s.utZone),
       touches: Number(s.zoneTouches), tolerance_pct: Number(s.zoneTol),
       marge_pct: Number(s.zoneMarge), ecart: 3, memoire: Number(s.zoneMemoire) });
     if (s.btDelai > 0) filtres.push({ type: 'delai_bougies', n: Number(s.btDelai) });
@@ -17414,7 +17491,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260920.5';
+  VERSION_APP = '260920.6';
   signature(cfg) { return this.MOTEUR_V + '|' + this.state.btSym + '|' + this.state.ut + '|' + JSON.stringify(cfg); }
   // tout réglage relance le test : impossible de lire un chiffre qui ne correspond pas à l'écran.
   // Mais un backtest complet par frappe fige l'interface : on regroupe les
@@ -23712,12 +23789,10 @@ GROUPES = {
       uts: [{ v: 'H1', nom: 'H1' }, { v: 'H4', nom: 'H4' }, { v: 'D1', nom: 'D1 (Daily)' }],
       ut: s.ut,
       setUt: (e) => {
-        // l'unité supérieure de la tendance suit l'unité de mesure : elle ne peut pas
-        // rester au niveau ou en dessous — remontée sans message d'erreur
-        const v = e.target.value;
-        const O2 = ['H1', 'H4', 'D1', 'W1'];
-        const sup2 = O2.slice(O2.indexOf(v) + 1);
-        this.maj(sup2.includes(this.state.utMtf) ? { ut: v } : { ut: v, utMtf: sup2[0] || 'W1' });
+        // toutes les unités de filtre suivent l'unité de mesure : aucune ne peut rester
+        // PLUS FINE qu'elle — le moteur ne la lirait pas, le robot si. Remontée sans
+        // message d'erreur, par la porte unique.
+        this.maj(this.unitesSuivantDecision(e.target.value));
       },
       gPeriodes: s.gPeriodes, gSls: s.gSls, gRrs: s.gRrs,
       setGPeriodes: (e) => this.setState({ gPeriodes: e.target.value }),
@@ -24768,11 +24843,9 @@ GROUPES = {
         avertir: v !== 'H1',
         cls: 'tag ' + (s.ut === v ? 'tag-accent' : 'tag-outline'),
         choisir: () => {
-          // l'unité supérieure de la tendance suit : elle ne peut pas rester au niveau
-          // ou en dessous de l'unité de mesure — remontée sans message d'erreur
-          const O2 = ['H1', 'H4', 'D1', 'W1'];
-          const sup2 = O2.slice(O2.indexOf(v) + 1);
-          this.maj(sup2.includes(this.state.utMtf) ? { ut: v } : { ut: v, utMtf: sup2[0] || 'W1' });
+          // toutes les unités de filtre suivent : aucune ne peut rester PLUS FINE que
+          // l'unité de mesure. Même porte que `setUt`, sans quoi les deux divergeraient.
+          this.maj(this.unitesSuivantDecision(v));
         },
       })),
       utLigne: 'Unité de temps',
@@ -26068,7 +26141,23 @@ GROUPES = {
         };
         const OPT = (l) => l.map((o) => (typeof o === 'string' ? { v: o, t: o } : o));
         const LIG = OPT([{ v: 'ema', t: 'MME' }, { v: 'ma', t: 'MM' }, { v: 'mediane', t: 'Médiane' }]);
-        const uts3 = OPT(['H1', 'H4', 'D1']);
+        // ————— LES MENUS NE SERVENT PLUS UNE UNITE PLUS FINE QUE LA DECISION —————
+        // C'est la partie VISIBLE de la regle, et la moins importante des trois : la
+        // normalisation vit dans `cfgCourante`, les defauts suivent ci-dessous. Un menu
+        // seul serait cosmetique — il ne touche ni l'etat enregistre, ni une sauvegarde
+        // importee, ni une archive de scan.
+        const rdU = this.RANG_UT[String(s.ut || 'H1').toUpperCase()] || 1;
+        const utOK = (u) => (this.RANG_UT[String(u).toUpperCase()] || 0) >= rdU;
+        // un defaut plus fin que la decision est le defaut lui-meme dans le cas : c'est
+        // lui qui faisait 47,1 % de la grille (utRsi H1, utAdx H1, utPente H4)
+        const utD = (u) => (utOK(u) ? u : (s.ut || 'H1'));
+        // repli sur la decision quand aucune option ne reste : un menu vide ne se repare
+        // pas tout seul, et `s.ut` est toujours une reponse valide (egale est incluse)
+        const utsDe = (l) => {
+          const g = l.filter((o) => utOK(typeof o === 'string' ? o : o.v));
+          return OPT(g.length ? g : [s.ut || 'H1']);
+        };
+        const uts3 = utsDe(['H1', 'H4', 'D1']);
         const ch = (nom, champ, drapeau, opts, unite, bornes, val) => ({
           nom, unite: unite || '',
           estNum: !opts, estSel: !!opts, opts: opts || [],
@@ -26091,38 +26180,38 @@ GROUPES = {
               ch('Ligne', 'lignePente', 'fPente', LIG, ''),
               ch('Longueur de la ligne', 'periodePente', 'fPente', null, 'bougies ' + s.utPente, [2, 400, 1], s.periodePente || s.periodeMtf),
               ch('Mesurée sur', 'fPenteRecul', 'fPente', null, 'bougies ' + s.utPente, [1, 50, 1])],
-            defaut: { utPente: 'H4', lignePente: 'mediane', periodePente: 9, fPenteRecul: 3 } },
+            defaut: { utPente: utD('H4'), lignePente: 'mediane', periodePente: 9, fPenteRecul: 3 } },
           { nom: 'RSI', on: !!s.fRsi, drapeau: 'fRsi', aide: AIDE_F.rsi,
             phrase: 'N\u2019entre que si le RSI est AU-DESSUS du seuil : les acheteurs dominent. À la vente, la condition se lit en miroir (100 \u2212 seuil). Période en bougies ' + s.utRsi + '.',
             val: () => s.utRsi + ' · RSI ' + s.periodeRsi + ' \u2265 ' + s.fRsiSeuil,
             champs: [ch('Unité', 'utRsi', 'fRsi', uts3, ''),
               ch('Période', 'periodeRsi', 'fRsi', null, 'bougies ' + s.utRsi, [2, 100, 1]),
               ch('Seuil', 'fRsiSeuil', 'fRsi', null, '\u2265', [1, 99, 1])],
-            defaut: { utRsi: 'H1', periodeRsi: 14, fRsiSeuil: 50 } },
+            defaut: { utRsi: utD('H1'), periodeRsi: 14, fRsiSeuil: 50 } },
           { nom: 'ADX', on: !!s.fAdx, drapeau: 'fAdx', aide: AIDE_F.adx,
             phrase: 'N\u2019entre que si la tendance a de la force : ADX au-dessus du seuil. L\u2019ADX ne dit pas la direction — il ne s\u2019inverse pas à la vente.',
             val: () => s.utAdx + ' · ADX ' + s.periodeAdx + ' \u2265 ' + s.fAdxSeuil,
             champs: [ch('Unité', 'utAdx', 'fAdx', uts3, ''),
               ch('Période', 'periodeAdx', 'fAdx', null, 'bougies ' + s.utAdx, [2, 100, 1]),
               ch('Seuil', 'fAdxSeuil', 'fAdx', null, '\u2265', [5, 60, 1])],
-            defaut: { utAdx: 'H1', periodeAdx: 14, fAdxSeuil: 20 } },
+            defaut: { utAdx: utD('H1'), periodeAdx: 14, fAdxSeuil: 20 } },
           { nom: 'Nuage Ichimoku', on: !!s.fNuage, drapeau: 'fNuage', aide: AIDE_F.nuage,
             phrase: 'N\u2019entre que si le prix est au-dessus du nuage (en dessous, à la vente). Les périodes du nuage sont celles d\u2019Ichimoku — 9, 26, 52 — fixées par le moteur : seule l\u2019unité se règle.',
             val: () => s.utNuage + ' · au-dessus du nuage',
             champs: [ch('Unité', 'utNuage', 'fNuage', uts3, '')],
-            defaut: { utNuage: 'D1' } },
+            defaut: { utNuage: utD('D1') } },
           { nom: 'Pivot', on: !!s.fPivot, drapeau: 'fPivot', aide: AIDE_F.pivot,
             phrase: 'N\u2019entre qu\u2019au-dessus du pivot — le prix moyen de la période de référence précédente. La référence est l\u2019unité choisie : D1 = pivot du jour, W1 = de la semaine.',
             val: () => 'au-dessus du pivot ' + (s.utPivot === 'D1' ? 'du jour' : s.utPivot === 'W1' ? 'de la semaine' : s.utPivot),
-            champs: [ch('Référence', 'utPivot', 'fPivot', OPT([{ v: 'H4', t: 'H4' }, { v: 'D1', t: 'Jour (D1)' }, { v: 'W1', t: 'Semaine (W1)' }]), '')],
-            defaut: { utPivot: 'D1' } },
+            champs: [ch('Référence', 'utPivot', 'fPivot', utsDe([{ v: 'H4', t: 'H4' }, { v: 'D1', t: 'Jour (D1)' }, { v: 'W1', t: 'Semaine (W1)' }]), '')],
+            defaut: { utPivot: utD('D1') } },
           { nom: 'Plus haut', on: !!s.fResist, drapeau: 'fResist', aide: AIDE_F.resist,
             phrase: 'Refuse d\u2019acheter trop près du plus haut des N dernières bougies : inutile d\u2019acheter juste sous un plafond. À la vente, ce filtre est ignoré par le moteur.',
             val: () => s.utResist + ' · plus haut ' + s.resistLookback + ' · marge ' + s.resistMarge + ' %' + (vente ? ' — ignoré à la vente' : ''),
             champs: [ch('Unité', 'utResist', 'fResist', uts3, ''),
               ch('Fenêtre', 'resistLookback', 'fResist', null, 'bougies ' + s.utResist, [3, 500, 1]),
               ch('Marge', 'resistMarge', 'fResist', null, '%', [0, 20, 0.05])],
-            defaut: { utResist: 'D1', resistLookback: 20, resistMarge: 1 } },
+            defaut: { utResist: utD('D1'), resistLookback: 20, resistMarge: 1 } },
           { nom: 'Zones', on: !!s.fZone, drapeau: 'fZone', aide: AIDE_F.zone,
             phrase: 'N\u2019entre que s\u2019il reste de la place sous la zone de résistance la plus proche — un niveau touché plusieurs fois dans la mémoire choisie. À la vente, ce filtre est ignoré par le moteur.',
             val: () => s.utZone + ' · ' + s.zoneTouches + ' touches · marge ' + s.zoneMarge + ' %' + (vente ? ' — ignoré à la vente' : ''),
@@ -26131,7 +26220,7 @@ GROUPES = {
               ch('Tolérance', 'zoneTol', 'fZone', null, '%', [0.05, 5, 0.05]),
               ch('Marge', 'zoneMarge', 'fZone', null, '%', [0, 10, 0.1]),
               ch('Mémoire', 'zoneMemoire', 'fZone', null, 'bougies ' + s.utZone, [20, 1000, 10])],
-            defaut: { utZone: 'D1', zoneTouches: 3, zoneTol: 0.5, zoneMarge: 1, zoneMemoire: 250 } },
+            defaut: { utZone: utD('D1'), zoneTouches: 3, zoneTol: 0.5, zoneMarge: 1, zoneMemoire: 250 } },
           { nom: 'Délai mini', on: aDelai, drapeau: null, aide: AIDE_F.delai,
             phrase: 'Interdit une nouvelle entrée trop près de la précédente, pour ne pas empiler le même signal. Compté en bougies H1 — la série de base — quelle que soit l\u2019unité de mesure. Zéro = inactif.',
             val: () => s.btDelai + (Number(s.btDelai) > 1 ? ' bougies H1' : ' bougie H1') + ' entre deux entrées',

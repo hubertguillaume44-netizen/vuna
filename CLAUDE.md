@@ -5909,9 +5909,197 @@ MONDE, qu'aucune garde du dépôt ne peut constater ; et ce fichier-ci pèse 362
 dette, c'est une trace.* Elle y est écrite par son DÉCLENCHEUR — « au premier client » —
 et non par son sujet, pour être trouvée par quelqu'un qui ne cherchait pas `W1`.
 
-**B reste ouvert, et il n'est pas à décider seul.** Les deux sorties s'excluent : le
-moteur ré-échantillonne depuis la H1 brute — rendre vrai ce qui est écrit — ou
-l'interface cesse d'offrir une unité par filtre — rendre écrit ce qui est vrai.
+### B est tranché — et c'est le COMPTE NET qui a failli le faire classer bénin
+
+**STATUT · CAUSE ÉTABLIE — écart MESURÉ DANS LE DÉPÔT (recouvrement des jeux de trades,
+R par an, part de la grille exposée) ; la population de lignes touchées est RAPPORTÉE
+par l'utilisateur, sonde lancée sur ses deux espaces : zéro, dont zéro indéterminable.**
+
+L'utilisateur a choisi la seconde sortie — **rendre écrit ce qui est vrai**. Le moteur ne
+ré-échantillonne pas depuis la H1 brute ; le produit cesse d'offrir une unité de filtre
+plus fine que l'unité de décision. Ce qui a décidé n'est pas un arbitrage de goût : le
+motif existait déjà dans le produit — `utMtf` était la seule unité contrainte, et la
+seule qui n'a jamais porté le défaut. *On étend un motif éprouvé par l'absence de défaut
+là où il s'applique ; on ne conçoit rien.*
+
+#### Le compte net répond à « le testeur peut-il distinguer ? », jamais à « ma ligne dit-elle ce que mon robot fera ? »
+
+C'est la leçon du chantier, et elle a été commise avant d'être écrite. Quatre mesures
+disaient la même chose et la conclusion qu'on en tirait était trop douce :
+
+| | masques en désaccord | trades nets | verdict tiré |
+|---|---|---|---|
+| `W1` replié sur `H4` | 13 270 bougies | 0,0 % | « inoffensif » |
+| `tendance_mtf`, défauts divergents | 37,2 % des bougies | −1,4 %, sans signe | « ne peut pas porter une décision » |
+| ADX H1 sous décision D1 | 43,9 % des seaux porteurs de signal | +8,8 %, 6/4 | « non départageable » |
+| RSI H1 sous décision D1 | 32,7 % des seaux porteurs de signal | +20,9 %, 10/10 | défaut établi |
+
+**Les trois premiers verdicts étaient justes pour la question du testeur et faux pour
+celle de l'utilisateur.** 671 seaux décisifs en désaccord sur 1 529 avec un net de
++8,8 % ne veut pas dire « presque pareil » : ça veut dire que les désaccords s'annulent
+EN NOMBRE. Deux jeux de trades de taille identique et de contenu disjoint rendent un
+écart net de zéro.
+
+> **Un compte net mesure la DÉTECTABILITÉ d'un écart, pas le DOMMAGE qu'il cause.** Ce
+> qu'un utilisateur lit sur sa ligne n'est pas un nombre de trades : c'est un R par an,
+> un creux, un nombre de paris — tous calculés sur un jeu de trades. Si le jeu diffère
+> sur la moitié des journées décisives, le chiffre affiché n'est pas celui de son robot,
+> quel que soit l'accord des comptes.
+
+**LES DEUX GRANDEURS QUI RÉPONDENT, mesurées sur les dix familles d'exemple.** Le
+recouvrement est l'intersection sur l'union en multi-ensemble (journée d'entrée, sens),
+**rapporté à son plafond** `min(|A|,|B|)/max(|A|,|B|)` — deux jeux de tailles différentes
+ne peuvent pas atteindre 100 %, et le brut disait la bonne chose par le plus faible des
+chemins :
+
+| | recouvrement moteur↔robot | recouvrement moteur↔SANS filtre | \|Δ R/an\| médian | max | signes retournés |
+|---|---|---|---|---|---|
+| RSI H1 · décision D1 | 64 % brut, **78 % du plafond** | 70 % brut, **97 %** | 64 % | 127 % | 1 famille sur 10 |
+| ADX H1 · décision D1 | 48 % brut, **52 % du plafond** | 61 % brut, **100 %** | 80 % | 257 % | 1 famille sur 10 |
+| `tendance_mtf` · décision H1 | 41 % brut, **42 % du plafond** | 44 % brut, **77 %** | 26 % | 408 % | 1 famille sur 10 |
+
+> **Dans les trois cas, le jeu de trades du robot est PLUS ÉLOIGNÉ de la mesure que ne
+> l'est « ne pas filtrer du tout ».** Le désaccord entre deux implémentations du même
+> filtre dépasse l'effet entier du filtre. Et le 100 % de la colonne de droite a un sens
+> mécanique : filtrer ne fait que RETIRER des trades, ça n'en déplace aucun — changer
+> d'implémentation, si.
+
+Trois lignes sur trente voient leur R par an **changer de signe** : vx-or +8,2 → −2,2
+(RSI), vx-500 +1,3 → −1,2 (ADX), vx-or −2,5 → +7,7 (`tendance_mtf`).
+
+**AUCUNE BANDE DE BRUIT N'EXISTE POUR CES DEUX GRANDEURS, et elles sont livrées nues.**
+Le 7,5–11,0 % de l'arbitre est un bruit de COMPTAGE entre deux jeux de données du
+courtier ; il ne borne ni un recouvrement ni un R par an, et `scripts/mt5/` ne porte
+aucune liste de trades appariée. La colonne « moteur↔sans filtre » est une **échelle de
+comparaison** construite ici, pas une bande de bruit — *mieux vaut livrer un écart nu
+que l'habiller d'une bande qui mesure autre chose.*
+
+#### La règle vit à la RÉSOLUTION ; le menu n'en est que la partie visible
+
+Trois étages, et ils ne valent pas la même chose :
+
+| l'étage | ce qu'il tient | ce qu'il ne tient pas |
+|---|---|---|
+| **`cfgCourante`** — la normalisation | toute unité plus fine que `etat.ut` est remontée à `etat.ut` | rien : c'est la règle |
+| **`unitesSuivantDecision`** — la porte d'affichage | le panneau MONTRE l'unité que la mesure emploie | la justesse du chiffre, qui est déjà tenue au-dessus |
+| **les menus** (`utsDe`, `utD`) | ce qu'on peut choisir | tout le reste |
+
+> **Un menu qui masque une option ne la retire ni de l'état enregistré, ni d'une
+> sauvegarde importée, ni d'une archive de scan.** Un correctif posé sur les seules
+> options serait cosmétique — et une garde qui regarderait le panneau le laisserait
+> passer.
+
+**ÉGALE EST INCLUSE**, parce que c'est le cas qui fonctionne aujourd'hui. `utMtf` garde
+SA règle — strictement au-dessus — et son menu n'a pas bougé : son nom promet une unité
+supérieure, pas égale, et l'unifier par souci de symétrie aurait changé sa sémantique
+sans qu'on le demande. Il passe quand même par la normalisation, où il n'est jamais
+remonté en pratique : la remontée n'existe pour lui que sur un état qu'aucun menu ne peut
+produire.
+
+**Et une unité absente ou illisible vaut la DÉCISION, jamais un défaut caché plus fin.**
+`resamplerBrut` fait tomber tout ce qu'il ne connaît pas dans le seau de 4 h et le robot
+prendrait le sien — deux côtés qui divergent sur ce que personne n'a écrit.
+
+#### La garde, et la mutation qui prouve à quel ÉTAGE la règle vit
+
+`scripts/app/unite-filtre-pas-plus-fine.test.mjs` lit la configuration RÉSOLUE dans un
+vrai navigateur, jamais le panneau. Sa surface se **découvre** : elle éteint tous les
+booléens de l'état, en rallume un, et retient ceux qui font NAÎTRE un filtre — un dixième
+filtre y entre sans qu'une ligne change (règle 7), et un drapeau renommé ne peut pas la
+faire mesurer le vide en silence. Sa prise exige six types au moins.
+
+Deux mutations, et la seconde est celle qui compte :
+
+| la mutation | ce qu'on attend | mesuré |
+|---|---|---|
+| rendre une unité plus fine à un filtre | rouge | rouge, « décision D1 → rsi résolu sur H1 » |
+| **restreindre les MENUS sans normaliser** | **rouge quand même** | rouge, sur les sept filtres, menus et défauts intacts |
+
+> **Une garde qui passerait au vert sous la seconde mesurerait le menu et non la
+> configuration** — et un correctif cosmétique lui suffirait. C'est la seule mutation du
+> dépôt écrite pour prouver l'ÉTAGE d'une règle plutôt que sa présence.
+
+Une seconde garde tient la porte d'affichage : sans elle le chiffre serait juste et
+l'écran dirait « RSI H1 » pendant que la mesure porte du D1 — la classe de
+`fenetre-nest-pas-seance`, *un champ qui nomme mal ce qu'il porte coûte plus cher qu'un
+champ absent.* Elle tombe si quelqu'un rétablit la constante `H1` dans les défauts du
+panneau, et elle vérifie au passage que `utMtf` reste strictement au-dessus.
+
+#### `MOTEUR_V` ne tourne pas — et ce qu'il faudrait si la population n'était pas vide
+
+La sonde a été lancée par l'utilisateur sur ses **deux** espaces : 18 lignes lues,
+**0 dans le cas, 18 hors du cas, 0 indéterminable, 0 unité divergente**. Le zéro est
+mesuré, pas silencieux. Il n'y a donc rien à périmer.
+
+**Ce qui serait à faire sinon, écrit avant d'en avoir besoin** : une ligne stockée
+portant une unité plus fine voit sa configuration RÉSOLUE changer sous cette version.
+Son R par an affiché devient périmé **sans qu'aucun calcul n'ait bougé** — ni le moteur,
+ni les règles de sortie, ni les frais : c'est la question posée au moteur qui change. Le
+prédicat ciblé (`_reg.utXxx` plus fin que `_reg.ut`) est écrivable sans toucher au format
+enregistré, avec les trois issues que `_exact` porte déjà. Il reste non écrit pour la
+raison correcte — *son test compterait zéro*, et non « il serait inutile ».
+
+#### La vacuité tenait à une coïncidence, et la grille le mesure
+
+Les défauts du produit étaient `utRsi H1`, `utAdx H1`, `utPente H4`, et les menus
+servaient `H1` quelle que soit la décision. Une ligne de décision D1 portant un RSI était
+donc dans le cas **par construction** — sans un geste de l'utilisateur.
+
+Mesuré sur la grille, toutes variantes de filtre cochées (34), unités de panneau par
+défaut. Les multiplicateurs — entrées × lignes × périodes × stops × objectifs, 756 — sont
+identiques pour chaque variante, donc la part des variantes EST la part des
+configurations :
+
+| décision | dans le cas | part | quels filtres |
+|---|---|---|---|
+| H1 *(le défaut du produit)* | 0 / 34 | **0 %** | rien ne peut être plus fin |
+| H4 | 4 / 34 | 11,8 % | `rsi H1`, `adx H1` |
+| **D1** | **16 / 34** | **47,1 %** | `rsi H1`, `adx H1`, `pente H4` |
+| W1 | 34 / 34 | 100 % | les huit familles |
+
+> **Ses dix-huit lignes en sortaient parce qu'elles décident en H1 ou ne portent ni RSI
+> ni ADX — pas parce que quoi que ce soit les protégeait.** « Population vide au
+> 20/09/2026 » était une mesure datée dont la date de péremption était le PROCHAIN SCAN
+> en décision D1, pas le premier client. C'est le correctif qui la rend vide par
+> construction.
+
+#### Et la dette `W1` de PASSATION.md n'est PAS retirée — vérifié plutôt que supposé
+
+Il avait été écrit ici, puis repris dans le brief, que ce correctif rendait la dette du
+repli `W1` → `H4` inatteignable, donc à supprimer. **C'est faux, et l'erreur est née
+ici** : les deux affaires ont été confondues parce qu'elles parlent toutes deux d'unités.
+
+| la dette (f) | ce correctif |
+|---|---|
+| une ligne enregistrée AVANT `260920.5` portant une unité de filtre `W1`, dont le chiffre vient de l'ancien repli sur `H4` | une unité de filtre PLUS FINE que la décision |
+
+Mesuré dans le navigateur, sur le fichier livré : une unité `W1` **survit entièrement** à
+la normalisation — `tendance_mtf=W1`, `pivot=W1`, `sous_resistance=W1` sous les trois
+unités de décision, puisque `W1` est plus GROSSIÈRE que toutes. Le cas de la dette n'est
+donc pas fermé, et une ligne ancienne garde son chiffre périmé.
+
+> **Deux défauts qui partagent un vocabulaire ne partagent pas une date de péremption.**
+> Le geste est celui du chapitre du fait plausible : *avant de retirer une dette, faire
+> échouer une fois la raison qu'on lui donne.* Ici la commande tenait dans un appel à
+> `cfgCourante`, et elle a rendu l'autre réponse.
+
+#### Un marqueur de mutation dormait dans le fichier LIVRÉ
+
+Trouvé en cherchant les miens : `Période à tester<span …>au format du testeur MT5</*MUT*//span>`
+dans `Vuna.dc.html`, posé par `d62b937` — une restauration de mutation qui a rendu
+`</span>` sous une forme abîmée, et que personne n'a vue parce que rien ne rougit.
+
+**Ce n'est pas cosmétique, et c'est mesuré** : le navigateur transforme `</*MUT*//span>`
+en **commentaire bogué** `<!--*MUT*//span-->`. La balise n'est donc jamais fermée par
+cette ligne, le `</span>` suivant ferme le mauvais élément, et l'élément qui suit descend
+d'un niveau dans l'arbre — vérifié sur le même fragment, avec et sans : profondeur 2 au
+lieu de 1, dans l'en-tête de grille du portefeuille.
+
+> **Une mutation se défait par le mécanisme qui l'a faite — et l'état se vérifie sur le
+> FICHIER, jamais sur le compte rendu de l'outil.** La règle 13 portait déjà la première
+> moitié ; celle-ci en est la troisième instance, et la première à avoir été LIVRÉE. Un
+> marqueur marqué (`/*MUT*/`) rend l'inverse inambigu ; il ne rend pas la restauration
+> certaine.
 
 ### Et j'ai relu un artefact BASE64 au grep, puis rapporté une absence
 
