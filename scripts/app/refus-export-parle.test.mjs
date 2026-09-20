@@ -235,12 +235,20 @@ test("le bouton d'export se grise sur la ligne refusée, et son infobulle nomme 
     const eteints = boutons.filter((b) => b.eteint);
     assert.equal(eteints.length, 1,
       eteints.length + " bouton(s) « Exporter » éteint(s) sur 3, 1 attendu. Le semis pose "
-      + "UNE ligne portant « Sous résistance » à l'ACHAT, que le générateur ne sait pas "
-      + "encore écrire : zéro "
+      + "UNE ligne à l'ACHAT portant un filtre que le générateur ne sait pas encore "
+      + "écrire : zéro "
       + "éteint veut dire qu'un bouton plein va refuser après le clic ; deux ou trois "
       + "veut dire qu'on vient de retirer un geste qui marche.");
-    assert.match(eteints[0].titre, /Sous résistance/,
-      "l'infobulle du bouton éteint ne NOMME pas le filtre qui bloque — elle dit : « "
+    // ————— LE NOM DU FILTRE VIENT DU SEMIS, PAS D'UNE CONSTANTE ICI —————
+    // Il a été écrit en clair jusqu'au jour où ce filtre-là a été porté en MQL5 : le
+    // semis a glissé sur un autre candidat, et cette assertion aurait accusé le produit
+    // d'un défaut qui n'existait pas. Le semis DÉCLARE ce qu'il a choisi ; on le lit.
+    const attendu = await p.evaluate("(" + INSTANCE + ")._semisRefus");
+    assert.ok(attendu && attendu.nom, "le semis ne déclare plus quel filtre il a posé "
+      + "(`_semisRefus`) : cette garde ne saurait pas quel nom exiger, et vérifier « un "
+      + "nom quelconque » ne vérifie rien.");
+    assert.ok(eteints[0].titre.includes(attendu.nom),
+      "l'infobulle du bouton éteint ne NOMME pas « " + attendu.nom + " » — elle dit : « "
       + eteints[0].titre + " ». Une généralité fait recliquer ; le nom du réglage permet "
       + "de choisir une autre configuration, qui est le seul geste utile ici.");
     for (const b of boutons.filter((x) => !x.eteint)) {
@@ -257,9 +265,9 @@ test("le bouton d'export se grise sur la ligne refusée, et son infobulle nomme 
       + " return { rendu, msg: String(l.state.hasardMsg || '') }; })()");
     assert.equal(direct.rendu, false, "l'export appelé directement sur la ligne refusée "
       + "rend « " + direct.rendu + " » : il ne refuse plus, et le bouton grisé mentirait.");
-    assert.match(direct.msg, /Sous résistance/,
-      "l'export appelé directement ne pose pas de message nommant le filtre — il dit : « "
-      + direct.msg + " ». C'est le chemin du lot, et il resterait muet.");
+    assert.ok(direct.msg.includes(attendu.nom),
+      "l'export appelé directement ne pose pas de message nommant « " + attendu.nom
+      + " » — il dit : « " + direct.msg + " ». C'est le chemin du lot, et il resterait muet.");
     assert.equal(telecharges, 0, telecharges + " fichier(s) téléchargé(s) : une "
       + "configuration refusée a produit un robot, ce qui est pire que le refus — le "
       + "robot ne reproduirait pas la mesure.");

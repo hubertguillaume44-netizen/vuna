@@ -60,8 +60,15 @@ const SECONDES = { H1: 3600, H4: 14400, D1: 86400, W1: 604800 };
 // seconde liste là-bas divergerait de celle-ci, et promettrait ce qu'on refuse ici.
 const INCONNUS = {
   fNuage: 'Au-dessus du nuage', fPivot: 'Au-dessus du pivot',
-  fResist: 'Sous résistance', fZone: 'Hors zone de résistance',
+  fZone: 'Hors zone de résistance',
 };
+// `fResist` EST SORTI DE CETTE TABLE le 20 septembre 2026 : « Sous résistance » est
+// transposé (voir `PlafondResist` plus bas), donc le refuser serait refuser un robot
+// qu'on sait écrire. Les trois qui restent sont dans l'ordre de coût que ce fichier
+// donnait déjà. Le registre du dépôt en garde la trace, et `SANS_SYMETRIQUE_VENDEUR`
+// continue de porter `fResist` — le miroir de vente est un fait de la MESURE, pas une
+// propriété de la transposition : les deux sont indépendants, et les confondre ferait
+// dépendre un fait du marché de l'avancement d'un chantier.
 const REGLAGES_BLOQUANTS = { btDelai: 'Délai d\u2019entrée' };
 
 // ————— ET DEUX DE CES QUATRE NE SONT PAS DANS LA MESURE D'UNE VENTE —————
@@ -285,6 +292,24 @@ export function genererMQ5(cfg, ctx = {}) {
     resume.push('pente ' + (etat.utPente || 'H4') + ' recul ' + recul);
   }
 
+  if (etat.fResist && !vente) {
+    const n = nb(etat.resistLookback, 20);
+    const s = secs(etat.utResist, 86400);
+    const mPct = nb(etat.resistMarge, 1);
+    const marge = 1 - mPct / 100;
+    tests.push(`   // sous résistance : la clôture H1 décidante reste sous le plus haut des ${n}
+   // seaux ${(etat.utResist || 'D1')} qui PRÉCÈDENT celui qui la contient, marge ${mPct} %
+   {
+      datetime tDec = (datetime)(SeauCourant(3600) * 3600);
+      double c = C_(3600, 1);
+      double plaf = PlafondResist(${s}, ${n}, tDec);
+      if(c <= 0.0 || plaf <= 0.0) return false;
+      double seuil = plaf * ${marge};
+      if(c >= seuil) { g_raison = StringFormat("sous résistance : clôture %s vs plafond %s", DoubleToString(c, _Digits), DoubleToString(seuil, _Digits)); return false; }
+   }`);
+    resume.push('sous résistance ' + (etat.utResist || 'D1') + ' ' + n + ' (marge ' + mPct + ' %)');
+  }
+
   const signal = entree === 'CROISEMENT_OU_REBOND'
     ? (vente
       ? `   // croisement : la clôture passe SOUS la ligne (elle était au-dessus avant)
@@ -377,7 +402,7 @@ input ulong  InpMagic           = ${nb(ctx.magic, 20260901)};
 // quelle build l'avait émis. Le stamp d'export ne répond pas à cette question : il dit
 // QUAND on a exporté, pas DE QUOI. La marque est écrite ici dans la forme exacte que
 // « npm run app:version » cherche, donc ce fichier est daté comme les deux autres.
-#define VUNA_VERSION "260920.2"
+#define VUNA_VERSION "260920.4"
 //--- Configuration mesurée (ne pas modifier : le backtest ne serait plus valable)
 #define STOP_PCT        ${sl}
 #define OBJECTIF_R      ${rr}
@@ -603,6 +628,34 @@ long SeauCourant(long sec)
    int i = IdxDe(1);
    if(i < 0 || i >= g_n) return -1;
    return g_seau[i];
+}
+
+// Plafond « sous résistance » : le plus haut des n seaux qui PRÉCÈDENT celui contenant
+// la bougie décidante. Port littéral de filtreSousResistance (moteur.js), et sa forme
+// n'est celle d'AUCUN autre filtre — c'est ce qui a demandé de l'écrire plutôt que de
+// rappeler LigneAgr :
+//   · le plafond EXCLUT le seau courant (k va de j-n a j-1), là où une ligne agrégée
+//     inclut le seau visé ;
+//   · la clôture comparée est celle de la bougie H1, pas celle du seau — les autres
+//     filtres de seau comparent la clôture du seau précédent à leur ligne, celui-ci
+//     compare la clôture H1.
+// Se tromper de l'un ou de l'autre coûte 0,69 % des bougies et 1,2 % des trades :
+// MESURÉ, et sous le bruit que le testeur MT5 porte entre ses propres jeux de données.
+// C'est pourquoi la fidélité se prouve ici, bougie par bougie, et non par un rejeu.
+double PlafondResist(long sec, int n, datetime tDecision)
+{
+   if(n < 1) return 0.0;
+   if(!Agreger(sec)) return 0.0;
+   long sD = SeauDe(tDecision, sec);
+   // le seau qui CONTIENT la bougie décidante. Agreger retire le dernier seau (celui en
+   // formation) : quand la bougie décidante lui appartient — le cas courant — aucun
+   // indice ne correspond, et le seau cherché est donc g_n, juste après le dernier gardé.
+   int j = g_n;
+   for(int i = g_n - 1; i >= 0; i--) if(g_seau[i] == sD) { j = i; break; }
+   if(j - n < 0) return 0.0;
+   double hi = -DBL_MAX;
+   for(int k = j - n; k < j; k++) if(g_h[k] > hi) hi = g_h[k];
+   return hi;
 }
 
 //--- lignes calculées sur les bougies agrégées

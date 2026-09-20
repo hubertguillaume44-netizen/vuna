@@ -121,8 +121,8 @@ export const POSER_SEMIS = `(() => {
         + "par instrument, la table ne peut pas en porter deux du même");
       // ————— LE BANC N'EXERÇAIT QUE LE SUCCÈS —————
       // Sept rapports « Exporter ne produit rien » en trois jours, et le départage a
-      // fini par être le FILTRE : « Sous résistance » n'est pas encore transposé en
-      // MQL5, le générateur le refuse. Le semis ne posait que des lignes à filtre ADX — toutes
+      // fini par être le FILTRE : certains ne sont pas encore transposés en MQL5, et le
+      // générateur les refuse. Le semis ne posait que des lignes à filtre ADX — toutes
       // exportables — donc la tournée cliquait « Exporter » et voyait un fichier
       // descendre, à chaque fois, sur le seul cas qui marche.
       //
@@ -139,15 +139,40 @@ export const POSER_SEMIS = `(() => {
       // (Pas d'accent grave dans ces commentaires : ils vivent DANS un littéral
       // gabarit, et le premier en fermerait la chaîne. Le module a déjà été cassé
       // deux fois par là.)
+      // ————— LE FILTRE REFUSÉ SE DÉCOUVRE, IL NE SE NOMME PAS —————
+      // Le semis posait fResist, en clair. Le jour où fResist a été PORTÉ en MQL5, le
+      // générateur a cessé de le refuser et huit bancs sont tombés d'un coup — sur une
+      // hypothèse du semis, pas sur un défaut du produit. C'est la règle 8 dans
+      // l'outillage : un nom de filtre est un LIEU, « un filtre que le générateur refuse
+      // encore » est une PROPRIÉTÉ.
+      //
+      // On essaie donc des candidats et on garde le premier que refusExport REFUSE
+      // VRAIMENT — décider sur le résultat, jamais sur le nom (règle 1). Le prochain port
+      // fera glisser le semis sur le candidat suivant sans qu'une ligne change ici.
+      //
+      // ET LE SENS EST DANS LA PHOTO, PAS DANS L'ÉTAT COURANT. etatDeLigne rend _reg
+      // par-dessus this.state : sans btSens dans la photo, le sens de cette ligne serait
+      // celui du réglage courant du banc, et le refus retire certains filtres à la vente.
+      // Le cas VENDEUR est mesuré sans navigateur par refus-suit-la-mesure.
+      const CANDIDATS = [
+        { cle: 'fZone', nom: 'Hors zone de résistance',
+          reg: { fZone: true, utZone: 'D1', zoneTouches: 3, zoneTol: 0.5, zoneMarge: 1, zoneMemoire: 250 } },
+        { cle: 'fNuage', nom: 'Au-dessus du nuage', reg: { fNuage: true, utNuage: 'D1' } },
+        { cle: 'fPivot', nom: 'Au-dessus du pivot', reg: { fPivot: true, utPivot: 'D1' } },
+      ];
+      const choisi = CANDIDATS.find((c) => {
+        try { return !!inst.refusExport({ ...ligneDe(S[0], 0), sens: 'achat', ut: 'H1',
+          _reg: { ...c.reg, btSens: 'achat' } }); } catch (e) { return false; }
+      });
+      if (!choisi) throw new Error("semis « décisions » : aucun des " + CANDIDATS.length
+        + " filtres candidats n'est encore refusé à l'export. Le banc ne peut plus poser "
+        + "de ligne refusée, donc il n'exercerait que le chemin qui réussit — ce qui a "
+        + "laissé passer sept rapports « Exporter ne produit rien ». Ajoutez un candidat "
+        + "que le générateur refuse, ou retirez les bancs qui dépendent du refus.");
+      inst._semisRefus = { cle: choisi.cle, nom: choisi.nom };
       const valides = S.map((sym, i) => ({ ...ligneDe(sym, i), sens: 'achat', ut: 'H1',
-      // ET LE SENS EST DANS LA PHOTO, PAS DANS L'ÉTAT COURANT. etatDeLigne rend
-      // _reg par-dessus this.state : sans btSens dans la photo, le sens de cette ligne
-      // serait celui du réglage courant du banc. Le refus RETIRE désormais
-      // « Sous résistance » à la vente — la mesure ne le porte pas là-bas —, donc une
-      // photo muette sur le sens ferait dépendre la prise du banc d'un défaut d'état.
-      // Le cas VENDEUR, lui, est mesuré sans navigateur par refus-suit-la-mesure.
-        ...(i === 0 ? { _reg: { fResist: true, btSens: 'achat', utResist: 'D1', resistLookback: 20, resistMarge: 1 },
-          filtreNom: 'Sous résistance D1 20 (marge 1 %)' } : {}) }));
+        ...(i === 0 ? { _reg: { ...choisi.reg, btSens: 'achat' },
+          filtreNom: choisi.nom } : {}) }));
       // LE VERDICT SE SÈME PAR LA CLÉ DU PRODUIT, jamais par des champs devinés.
       // Première version : des hasP/hasN/hasAu posés sur la ligne — inventés,
       // ignorés en silence, et la colonne rendait « contrôler » comme si aucun
@@ -191,7 +216,7 @@ export const POSER_SEMIS = `(() => {
       const refusee = lues.filter((v) => inst.refusExport && inst.refusExport(v));
       if (refusee.length !== 1) throw new Error("semis « décisions » : " + refusee.length
         + " ligne(s) refusée(s) à l'export de robot, 1 attendue. La ligne porteuse de "
-        + "\`fResist\` ne ressort pas de \`refusExport()\` : le banc n'exercerait de nouveau "
+        + "le filtre " + choisi.cle + " ne ressort pas de \`refusExport()\` : le banc n'exercerait de nouveau "
         + "que le chemin qui réussit, et c'est précisément ce qui a laissé passer sept "
         + "rapports « Exporter ne produit rien ».");
       const sansVerdict = lues.filter((v) => !inst.verdictHasard(v)).length;

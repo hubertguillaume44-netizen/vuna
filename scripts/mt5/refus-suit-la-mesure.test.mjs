@@ -104,48 +104,77 @@ const CFG = SRC.slice(I_CFG, borne(SRC, "\n  }", I_CFG));
 
 const ROBOT = readFileSync(new URL("../../robot-mt5.js", import.meta.url), "utf8");
 
-// ce qui AGIT, de chaque côté : une poussée de filtre gatée sur l'absence de vente
-// dans la mesure, une déclaration dans le générateur.
+const HARNAIS = readFileSync(new URL("./config.mjs", import.meta.url), "utf8");
+
+// ce qui AGIT, de chaque côté. La MESURE donne aussi la correspondance drapeau → type,
+// puisque c'est la même ligne qui décide et qui nomme : pas de table à tenir à jour.
 function retiresALaVente() {
-  return [...CFG.matchAll(/if \(s\.(\w+) && !vente\) filtres\.push/g)].map((m) => m[1]).sort();
+  return [...CFG.matchAll(/if \(s\.(\w+) && !vente\) filtres\.push\(\{ type: '(\w+)'/g)]
+    .map((m) => ({ drapeau: m[1], type: m[2] }))
+    .sort((x, y) => x.drapeau < y.drapeau ? -1 : 1);
 }
 function declaresSansSymetrique() {
   const d = ROBOT.slice(borne(ROBOT, "const SANS_SYMETRIQUE_VENDEUR = {"));
   return [...d.slice(0, borne(d, "};")).matchAll(/(\w+):/g)].map((m) => m[1]).sort();
 }
+// le HARNAIS : `mirroirVente` retire les types sans symétrique avant de bâtir la
+// configuration contre laquelle la fidélité du robot se mesure.
+function retiresParLeHarnais() {
+  const l = HARNAIS.slice(borne(HARNAIS, "export function mirroirVente(filtres) {"));
+  const ligne = l.slice(0, borne(l, "continue;"));
+  return [...ligne.matchAll(/f\.type === "(\w+)"/g)].map((m) => m[1]).sort();
+}
 
-test("le jeu retiré par la MESURE et le jeu déclaré par le GÉNÉRATEUR sont le même", () => {
-  // ————— UNE PRISE QUI NE VÉRIFIE QUE « PAS ZÉRO » SE LAISSE RÉTRÉCIR —————
-  // Premier jet : cette prise demandait seulement que la découverte ne soit pas vide.
-  // Éprouvée par mutation — on réécrit UN des deux gâteaux en `!vente && s.fResist` —,
-  // elle est restée VERTE : le motif perdait `fResist` et trouvait encore `fZone`, donc
-  // le jeu n'était pas vide et les trois assertions suivantes passaient sur la moitié
-  // d'une population. Un désancrage PARTIEL est invisible à une prise qui compte zéro,
-  // et c'est la forme que ce dépôt connaît sous « un compteur à zéro sans dénominateur
-  // a deux sens », un cran plus bas : ici il ne s'agit même pas de zéro.
+test("les TROIS sources du miroir de vente disent le même jeu", () => {
+  // ————— UNE PAIRE VÉRIFIÉE SUR UN TRIPLET EST UNE POPULATION CHOISIE —————
+  // Première forme : elle confrontait DEUX sources — la mesure et le générateur — et
+  // c'est elle qui a rendu le faux refus visible. Il y en a trois. `mirroirVente`, dans
+  // le harnais, retire les mêmes types avant de bâtir la configuration CONTRE LAQUELLE
+  // la fidélité du robot se mesure : un troisième filtre ajouté demain aux deux premières
+  // passerait au vert pendant que le harnais continuerait de le transmettre au moteur.
+  // Le harnais mesurerait alors une configuration que l'application ne mesure pas, et
+  // l'écart s'imputerait au robot.
   //
-  // La prise est donc la CONFRONTATION des deux sources, et elle échoue dans les deux
-  // sens (la forme de `boucles-mql5`) : un filtre gaté que le générateur ne déclare pas,
-  // un filtre déclaré qui n'est plus gaté, ou un motif qui en perd un en route font
-  // tomber la même assertion, en nommant de quel côté le membre manque.
+  // C'est exactement la classe fermée deux commits plus tôt sur un comptage : vérifier
+  // une paire d'un triplet est choisir sa population. Le geste est le même — énumérer
+  // les sources, puis les confronter toutes.
+  //
+  // LES DEUX VOCABULAIRES SE DÉRIVENT DU MÊME ENDROIT : la ligne de `cfgCourante` qui
+  // gate le filtre NOMME aussi son type. Aucune table à tenir à jour (règle 8).
   const mesure = retiresALaVente();
+  const drapeaux = mesure.map((x) => x.drapeau);
+  const types = mesure.map((x) => x.type).sort();
   const genere = declaresSansSymetrique();
+  const harnais = retiresParLeHarnais();
+
   assert.ok(mesure.length > 0,
-    "aucun `filtres.push` gaté par `&& !vente` trouvé dans `cfgCourante` : l'ancre a "
-    + "perdu sa prise. Ce n'est pas « plus aucun filtre n'est retiré à la vente » — "
-    + "c'est que la garde ne sait plus où regarder, et tout ce qui suit serait vert "
-    + "sur du vide.");
-  assert.deepEqual(mesure, genere,
-    "la mesure retire [" + mesure.join(", ") + "] à la vente ; le générateur déclare "
-    + "[" + genere.join(", ") + "] comme étant sans symétrique vendeur. Le défaut n'est "
-    + "dans aucune des deux listes prise seule — il est dans leur DÉSACCORD : un filtre "
-    + "gaté et non déclaré sera refusé à tort sur une vente, un filtre déclaré et non "
-    + "gaté sera offert alors que la mesure le porte.");
+    "aucun `filtres.push({ type: … })` gaté par `&& !vente` trouvé dans `cfgCourante` : "
+    + "l'ancre a perdu sa prise. Ce n'est pas « plus aucun filtre n'est retiré à la "
+    + "vente » — c'est que la garde ne sait plus où regarder, et les trois confrontations "
+    + "qui suivent seraient vertes sur du vide.");
+
+  // ————— ET LA PRISE COUVRE LE DÉSANCRAGE PARTIEL —————
+  // « pas vide » ne suffit pas : un motif qui perdrait UN membre laisserait les deux
+  // autres s'accorder sur la moitié d'une population. C'est mesuré — la première version
+  // de cette garde est restée verte sous exactement cette mutation.
+  assert.deepEqual(drapeaux, genere,
+    "la mesure retire [" + drapeaux.join(", ") + "] à la vente ; le générateur déclare ["
+    + genere.join(", ") + "] comme étant sans symétrique vendeur. Le défaut n'est dans "
+    + "aucune des deux listes prise seule — il est dans leur DÉSACCORD : un filtre gaté "
+    + "et non déclaré sera refusé à tort sur une vente, un filtre déclaré et non gaté "
+    + "sera offert alors que la mesure le porte.");
+  assert.deepEqual(types, harnais,
+    "la mesure retire les types [" + types.join(", ") + "] à la vente ; `mirroirVente` "
+    + "retire [" + harnais.join(", ") + "]. Le harnais bâtit la configuration contre "
+    + "laquelle la fidélité du robot se mesure : s'il transmet au moteur un filtre que "
+    + "l'application n'y met pas, il compare deux configurations différentes et impute "
+    + "l'écart au robot.");
 });
 
 test("un filtre que la MESURE retire à la vente n'est pas refusé à l'export", () => {
   const jeu = retiresALaVente();
-  const encore = jeu.filter((k) => filtresBloquants({ [k]: true, btSens: "vente" }).length);
+  const encore = jeu.map((x) => x.drapeau)
+    .filter((k) => filtresBloquants({ [k]: true, btSens: "vente" }).length);
   assert.deepEqual(encore, [],
     "à la vente, `cfgCourante` RETIRE " + encore.join(", ") + " de la configuration "
     + "mesurée, et `filtresBloquants` le refuse quand même. Le robot n'a rien à "
@@ -162,7 +191,18 @@ test("et il reste refusé à l'ACHAT, où la mesure le porte", () => {
   // chiffre. Sans cette moitié, la correction ci-dessus passerait en supprimant le
   // refus au lieu de le restreindre.
   const jeu = retiresALaVente();
-  const muets = jeu.filter((k) => !filtresBloquants({ [k]: true, btSens: "achat" }).length);
+  // ————— LA POPULATION EST L'INTERSECTION, PAS LE JEU ENTIER —————
+  // Un filtre retiré à la vente n'est pas forcément intransposable : `fResist` a quitté
+  // `INCONNUS` le jour où il a été porté en MQL5, et il reste sans symétrique vendeur.
+  // Exiger qu'il soit encore refusé à l'achat aurait fait de cette garde une LISTE au
+  // lieu d'un accord — elle serait tombée sur un port réussi. Les deux faits sont
+  // indépendants : « la mesure le porte-t-elle à la vente ? » et « le robot sait-il
+  // l'écrire ? ». On ne juge donc que ceux que le générateur déclare encore inconnus.
+  const inconnus = [...ROBOT.slice(borne(ROBOT, "const INCONNUS = {"))
+    .slice(0, borne(ROBOT.slice(borne(ROBOT, "const INCONNUS = {")), "};"))
+    .matchAll(/(\w+):/g)].map((m) => m[1]);
+  const muets = jeu.map((x) => x.drapeau).filter((k) => inconnus.includes(k))
+    .filter((k) => !filtresBloquants({ [k]: true, btSens: "achat" }).length);
   assert.deepEqual(muets, [],
     "à l'achat, la mesure PORTE " + muets.join(", ") + " et l'export ne le refuse plus. "
     + "Livrer le robot sans ce filtre donnerait un nombre de trades différent de celui "
@@ -173,7 +213,10 @@ test("un état sans sens retombe sur le REFUS, jamais sur l'offre", () => {
   // Le côté sûr se choisit, il ne se constate pas : un geste offert à tort livre un
   // robot qui ne reproduit pas la mesure ; un geste refusé à tort se voit et se
   // rapporte. La garde le fige plutôt que de le laisser dépendre d'un défaut de langage.
-  for (const k of retiresALaVente()) {
+  const inconnus = [...ROBOT.slice(borne(ROBOT, "const INCONNUS = {"))
+    .slice(0, borne(ROBOT.slice(borne(ROBOT, "const INCONNUS = {")), "};"))
+    .matchAll(/(\w+):/g)].map((m) => m[1]);
+  for (const k of retiresALaVente().map((x) => x.drapeau).filter((k) => inconnus.includes(k))) {
     assert.ok(filtresBloquants({ [k]: true }).length,
       "sans `btSens`, " + k + " n'est plus refusé : un état muet sur le sens est traité "
       + "comme une vente. C'est le mauvais côté du doute.");
@@ -268,4 +311,41 @@ test("le motif du refus a UNE source, pas une surface par appelant", () => {
     + "exactement la coupure qui l'a rendue invisible à un remplacement en masse : "
     + "`' n’a pas d’équivalent ' + 'MQL5 fidèle.'` ne contient aucune des deux chaînes "
     + "qu'on cherchait. Écrivez-la d'un seul tenant.");
+});
+
+test("la phrase du refus est GREPPABLE dans le fichier livré, pas seulement émise", () => {
+  // ————— CE QU'ON NE PEUT PAS LIRE À PLAT, ON NE PEUT PAS LE VÉRIFIER —————
+  //
+  // Le compte rendu d'une livraison est relu sur l'ARTEFACT, avec un `grep`, par
+  // quelqu'un qui n'analyse pas le source. Écrite `transposé`, la phrase ne répond
+  // pas : un comptage sur le livré a rendu 1 pour 2 surfaces, et la seule occurrence
+  // trouvée était une prose cassée. L'échappement ne trompe pas les gardes — espree rend
+  // la valeur — il ne trompe que l'œil, c'est-à-dire la seule vérification que
+  // l'utilisateur puisse faire lui-même.
+  //
+  // > Une garde vérifie ce qui est ÉMIS ; une personne vérifie ce qui est ÉCRIT. Quand
+  // > les deux diffèrent, c'est la personne qui perd — et elle perd en silence, parce
+  // > qu'un grep qui ne trouve rien ressemble à un grep qui trouve zéro.
+  //
+  // La prise est donc un RÉSULTAT et non une interdiction : on n'interdit pas les
+  // échappements — le fichier en porte des centaines de légitimes, et les interdire
+  // serait un faux refus massif (règle 16). On exige que la phrase se RETROUVE, telle
+  // quelle, dans l'artefact livré. Une seule façon d'y arriver : l'écrire en clair.
+  //
+  // ANGLE MORT, EN TÊTE : elle tient LA phrase que ces gardes policent. Elle ne connaît
+  // pas la population des textes qu'un rapport pourrait citer — il n'y en a pas de
+  // mécanique. La règle générale vit dans CLAUDE.md ; ce qui est gardé, c'est ce cas.
+  const solo = readFileSync(new URL("../../Vuna.solo.html", import.meta.url), "utf8");
+  const m = /REFUS_ROBOT = '((?:[^'\\]|\\.)*)'/.exec(SRC);
+  assert.ok(m, "`REFUS_ROBOT` est introuvable dans la source : la garde a perdu son sujet.");
+  const phrase = JSON.parse('"' + m[1].replace(/"/g, '\\"') + '"');
+  assert.ok(phrase.length > 80,
+    "la phrase du refus ne fait que " + phrase.length + " caractères : la garde mesure "
+    + "un fragment, et un fragment se retrouve partout.");
+  assert.ok(solo.includes(phrase),
+    "la phrase du refus n'est pas lisible À PLAT dans `Vuna.solo.html`. Elle y est "
+    + "sans doute ÉMISE — un échappement rend la même valeur — mais un `grep` sur le "
+    + "fichier livré ne la trouve pas, donc personne ne peut vérifier un compte rendu "
+    + "qui la cite. Écrivez-la en caractères réels.\n\n  cherché : « "
+    + phrase.slice(0, 70) + "… »");
 });

@@ -5534,3 +5534,275 @@ est désormais la **forme du nœud** — l'initialisateur doit être un `Literal
 > **Quand on interdit une forme de texte, la prise ne peut pas être du texte.** Un motif
 > qui décrit le début d'une chaîne ne sait rien de sa fin — c'est le préfixe `vena.` qui
 > décrivait toutes les clés sauf celle qui les construit, sur une autre grandeur.
+
+## Un arbitre qui distingue la PRÉSENCE ne distingue pas la JUSTESSE
+
+**STATUT · CAUSE ÉTABLIE — objection RAPPORTÉE puis réfutée par l'utilisateur, chiffres
+MESURÉS DANS LE DÉPÔT sur les dix familles d'exemple.**
+
+Le port MQL5 de « Sous résistance » avait été reporté — non sur son coût, une dizaine de
+lignes, mais sur celui de sa **preuve** : un rejeu contre un testeur dont deux jeux de
+données du même courtier divergent sur 50 249 prix.
+
+**L'objection prouvait trop, et c'est l'utilisateur qui l'a dit** : le même arbitre, avec
+la même contradiction, a servi à établir six concordances au trade près. S'il ne peut pas
+prouver ce port, il invalide rétroactivement ces six-là. *Ce qui était refusé n'était pas
+la prudence — c'était le report SANS MESURE : un fait plausible (« l'arbitre est trop
+bruyant ») à la place d'un fait disponible (de combien, contre quoi).*
+
+Mesuré, configuration d'achat croisement/rebond 7, SL 0,7 / RR 1,5 :
+
+| | trades | écart |
+|---|---|---|
+| filtre absent → présent | 1 328 → 950 | **−28,5 %** (10,7 % à 44,7 % selon la famille) |
+| bruit de l'arbitre, HongKong50 | 12 / 161 | 7,5 % |
+| bruit de l'arbitre, IBEX 35 | 10 / 91 | 11,0 % |
+
+**L'écart du filtre vaut 3,8 fois le bruit** : l'arbitre sait dire « le filtre est là ou
+il n'y est pas », comme il l'a dit six fois. L'objection tombe, et le port se fait.
+
+### Mais la question du port n'était pas celle-là, et la seconde mesure la retourne
+
+| ce qu'on change dans le port | trades | écart |
+|---|---|---|
+| fenêtre N = 19 au lieu de 20 | 939 | **1,2 %** |
+| fenêtre N = 21 au lieu de 20 | 954 | **0,4 %** |
+| marge 0,9 % au lieu de 1 % | 990 | **4,2 %** |
+
+Les trois sont **sous** le bruit.
+
+**UNE QUATRIÈME LIGNE A ÉTÉ RETIRÉE, ET SA CORRECTION VAUT MIEUX QUE LE CHIFFRE.**
+« Unité H4 au lieu de D1 → 0,0 % » avait été rapporté comme un fait remarquable, et
+portait la conclusion la plus large. L'explication avait été annoncée — *« le 0,0 %
+reste à expliquer avant que je m'appuie sur ces chiffres »* — puis jamais donnée, et le
+chiffre a servi quand même.
+
+Mesuré : `backtesterSuivi(df, cfg, 'D1')` **ré-échantillonne avant d'appliquer les
+filtres**. Il passe au filtre la série D1 — 783 bougies —, jamais la H1 — 18 009. Et
+ré-échantillonner une série D1 en H4 la rend telle quelle : 783 bougies des deux côtés,
+masques identiques, zéro trade d'écart **par construction**.
+
+> **L'unité d'un filtre est DÉGÉNÉRÉE dès qu'elle est plus grossière ou égale à celle de
+> la décision** — la série qu'on lui donne a déjà perdu le détail qu'elle demanderait.
+> Ce n'est ni un fait remarquable ni un réglage non appliqué : c'est une propriété du
+> chemin, et elle se lit dans trois lignes de `backtesterSuivi`.
+
+**Et les « 5 447 bougies qui diffèrent » avaient été comptées sur la série H1** — celle
+que ce backtest ne donne jamais au filtre. *Deux populations, comptées l'une pour
+l'autre, dans le chapitre qui nomme ce défaut.* L'argument tient sur les trois lignes qui
+restent ; il n'avait pas besoin de la quatrième.
+
+> **Un arbitre qui distingue la PRÉSENCE d'un mécanisme ne distingue pas sa JUSTESSE.**
+> Ce sont deux questions, et une seule mesure répondait. C'est la figure des deux
+> populations comptées l'une pour l'autre — celle du « quatre surfaces » de la veille —
+> appliquée cette fois à un critère de PREUVE au lieu d'un compte.
+
+**La conséquence renverse le plan, pas la décision.** Le brief demandait une mutation —
+décaler la fenêtre d'un seau, rouge obligatoire — sur un rejeu MT5. Elle aurait été
+**verte** : 1,2 %, dans le bruit, et « vert » aurait été lu comme « le harnais ne regarde
+pas les bonnes journées » alors qu'il aurait regardé les bonnes en ne pouvant pas les
+distinguer. Posée sur les bougies, dans le dépôt, la même mutation est rouge
+immédiatement — 223 bougies sur la première famille.
+
+> **Quand une mutation ne peut pas être rouge, ce n'est pas la garde qu'il faut changer,
+> c'est l'instrument.** Le seuil de résolution d'un arbitre se mesure AVANT de lui
+> confier une preuve, et il se mesure contre l'effet qu'on veut lui faire trancher —
+> jamais contre l'effet le plus visible du même dispositif.
+
+### Ce qui est livré, et ce que la garde prouve
+
+`PlafondResist` porte `filtreSousResistance` à la lettre, et sa forme n'est celle
+d'aucun autre filtre — deux raisons qui ont demandé de l'écrire plutôt que de rappeler
+`LigneAgr` : le plafond **exclut** le seau courant là où une ligne agrégée inclut le seau
+visé, et la clôture comparée est celle de la **bougie H1**, pas celle du seau.
+
+`scripts/mt5/sous-resistance-portee.test.mjs` porte en JS ce que le MQL5 émis exécute et
+exige l'égalité **bougie par bougie**, zéro tolérance, sur trois configurations et dix
+familles. Un second test vérifie que le source émis **appelle** la règle avec ses trois
+paramètres — sans quoi le port mesurerait une règle que personne n'exécute.
+
+**Et une mutation est restée VERTE, ce qui est une réponse et non un trou.** Compter le
+seau en formation parmi les gardés ne change rien : les deux formulations retombent sur
+le même ensemble — *les n seaux qui précèdent celui de la bougie décidante*. Que ce seau
+soit déjà clos ou encore en formation change l'indice trouvé, jamais la fenêtre.
+
+> **Une mutation inerte qui s'EXPLIQUE est une propriété mesurée.** Elle dit ici que
+> l'alignement de seau — le seul endroit où le port pouvait dériver en silence — est
+> robuste. Ce qui mord, ce sont la fenêtre, la borne du plafond et la marge : trois
+> mutations, trois rouges.
+
+### Et la garde du miroir de vente a dû SUIVRE le retrait, pas être réécrite
+
+`fResist` quitte `INCONNUS` ; il reste dans `SANS_SYMETRIQUE_VENDEUR`. Les deux faits
+sont indépendants — *« la mesure le porte-t-elle à la vente ? »* et *« le robot sait-il
+l'écrire ? »* — et les confondre ferait dépendre un fait du marché de l'avancement d'un
+chantier.
+
+La garde de la veille exigeait que chaque filtre retiré à la vente soit **encore refusé à
+l'achat**. Sur un port réussi, elle serait tombée : elle tenait une liste là où elle
+croyait tenir un accord. Sa population est désormais l'**intersection** — les filtres
+gatés ET encore déclarés inconnus —, découverte des deux côtés. Mutation : remettre
+`fResist` dans `INCONNUS` fait tomber le port, pas le miroir.
+
+## Une paire vérifiée sur un TRIPLET est une population choisie
+
+Le même savoir — *« sous résistance et zone de résistance n'ont pas d'équivalent
+vendeur »* — vit à trois endroits :
+
+| lieu | forme |
+|---|---|
+| `cfgCourante` | `&& !vente` |
+| `robot-mt5.js` | `SANS_SYMETRIQUE_VENDEUR` |
+| `scripts/mt5/config.mjs` · `mirroirVente` | `if (f.type === …) continue;` |
+
+La garde en confrontait **deux**, et c'est elle qui a rendu le faux refus visible. La
+troisième est le port du **harnais** : celui qui bâtit la configuration contre laquelle
+la fidélité du robot se mesure. Un troisième filtre ajouté demain aux deux premières
+sources passerait au vert pendant que `mirroirVente` continuerait de le transmettre au
+moteur — le harnais mesurerait alors une configuration que l'application ne mesure pas,
+**et l'écart s'imputerait au robot**.
+
+> **Confronter deux sources d'un triplet, c'est choisir sa population** — exactement ce
+> que ce fichier venait de fermer sur un comptage de surfaces. *Le remède n'est pas de
+> vérifier mieux : c'est d'ÉNUMÉRER les sources avant de les confronter.*
+
+**Les deux vocabulaires se dérivent du même endroit** : la ligne de `cfgCourante` qui
+gate le filtre NOMME aussi son type. Aucune table de correspondance à tenir à jour
+(règle 8). Mutation : retirer un type de `mirroirVente` fait tomber la garde en nommant
+les deux listes.
+
+## Une garde vérifie ce qui est ÉMIS ; une personne vérifie ce qui est ÉCRIT
+
+**PROVENANCE · la vérification FAUSSE est celle de l'utilisateur, rapportée par lui.**
+
+Un compte rendu de livraison se relit sur l'**artefact**, avec un `grep`, par quelqu'un
+qui n'analyse pas le source. Écrite `transposé`, la phrase du refus n'a pas répondu :
+un comptage sur le fichier livré a rendu **1 pour 2 surfaces**, et la seule occurrence
+trouvée était une prose cassée. L'échappement ne trompe aucune garde — espree rend la
+valeur, et les deux formes lui sont le même texte. **Il ne trompe que l'œil.**
+
+> **Quand ce qui est émis et ce qui est écrit diffèrent, c'est la personne qui perd — et
+> elle perd en silence, parce qu'un grep qui ne trouve rien ressemble à un grep qui
+> trouve zéro.** Une forme qui ne coûte rien à la machine et rend une vérification
+> humaine possible n'est pas un détail de style.
+
+**La prise est un RÉSULTAT, pas une interdiction.** On n'interdit pas les échappements —
+le fichier en porte des centaines de légitimes, et les interdire serait un faux refus
+massif (règle 16). On exige que la phrase **se retrouve**, telle quelle, dans l'artefact
+livré ; il n'y a qu'une façon d'y arriver. Mutation : la repasser en échappements et
+reconstruire l'artefact fait tomber la garde — et le `grep` humain retombe alors à 1.
+
+**Son angle mort est en tête** : elle tient LA phrase que ces gardes policent. Il n'y a
+pas de population mécanique des textes qu'un rapport pourrait citer ; la règle générale
+vit ici, ce qui est gardé est ce cas.
+
+### Deux artefacts qui disent le même savoir, écrits l'un d'après l'autre
+
+**PROVENANCE · la faille est nommée par l'utilisateur, la fermeture MESURÉE DANS LE
+DÉPÔT par cinq mutations qui ne touchent QUE le MQL5.**
+
+La garde du port prouvait qu'une **simulation JS** égale le moteur, bougie par bougie.
+Elle ne prouvait pas que cette simulation égale le **MQL5 livré** : les deux ont été
+écrits à la main, d'après la même intention, et rien ne les confrontait.
+
+```
+moteur (JS)  ↔  simulation (JS)  …  PlafondResist (MQL5, que rien n'exécute)
+                     ↑ prouvé          ↑ jamais confronté à rien
+```
+
+**C'est la classe des cinq copies d'une phrase, transposée du texte au code.** La surface
+manquée serait une transcription, et la garde resterait verte. *Et la sortie de secours
+était fermée par la mesure du même jour* : un rejeu MT5 ne rattrape pas un port faux,
+puisque les signatures d'erreur fines sont sous le bruit du testeur. Ni le dépôt, qui
+n'exécute pas MQL5, ni le testeur, qui ne résout pas l'écart.
+
+> **Quand deux artefacts portent le même savoir et qu'un seul est exécutable, « j'ai
+> écrit le second d'après le premier » n'est pas une preuve — c'est la description du
+> risque.** La question n'est pas *sont-ils d'accord ?* mais *par quel mécanisme un
+> désaccord serait-il VU ?*
+
+**La chaîne se referme par le seul bout disponible, et il y en avait deux :**
+
+| | ce qui est dérivé du texte émis |
+|---|---|
+| les **paramètres** | la simulation ne lit plus `cfg` : elle extrait du MQL5 produit la fenêtre, la marge et l'unité, et joue ceux-là. Une émission qui écrirait 19 au lieu de 20 passerait sinon, puisque la simulation ne l'aurait jamais lue |
+| la **structure** | chaque décision que la simulation prend est assertée dans le corps émis — le défaut de `j`, le sens de la recherche, la borne exclusive du plafond, le refus quand l'historique manque, le seau de la bougie décidante, et le `g_n--` d'`Agreger` |
+
+Cinq mutations posées **du seul côté MQL5** la font tomber, chacune en nommant la
+décision perdue. Ce qui reste dehors est écrit en tête : ce que MetaTrader fait de ce
+texte.
+
+**ET L'AUTRE ÉCHELLE D'ERREUR EST DÉCLARÉE AVEC SA PRÉDICTION.** Une transcription rate
+rarement de 1,2 % ; elle rate de 40 %. Le rejeu qui trancherait ça n'a pas besoin d'être
+fin — il lit un compte de trades, et la prédiction est écrite d'avance dans le fichier
+pour être relue telle quelle. *Les deux échelles ensemble sont la seule couverture
+honnête ; tant que le rejeu n'a pas eu lieu, le statut du port le dit.*
+
+### Une mutation inerte dit « non mesuré », pas « robuste »
+
+L'équivalence des deux façons de compter le seau en formation avait été expliquée en
+prose, et l'explication était juste. Elle restait une explication.
+
+> **Une mutation qui ne tombe pas mesure l'absence d'une garde, jamais la présence d'une
+> propriété.** Si l'équivalence est vraie, elle est ASSERTABLE — et tant qu'elle ne l'est
+> pas, le fichier affirme sur parole exactement ce qu'il interdit ailleurs.
+
+Les deux formulations sont désormais jouées l'une contre l'autre sur la même population,
+avec une prise qui exige que le masque décide. Le fait est mesuré ; le commentaire n'en
+est plus que la raison.
+
+## L'unité d'un filtre est INERTE dans le moteur et VIVANTE dans le robot
+
+**STATUT · DÉFAUT MESURÉ DANS LE DÉPÔT, NON CORRIGÉ — RELEVÉ, NON FERMÉ.** Rien n'est
+changé ici : la mesure est consignée pour que la correction se décide sur des chiffres.
+Elle est née d'une lecture de l'utilisateur sur `backtesterSuivi`, et elle déborde le lot
+qui l'a fait trouver.
+
+`backtesterSuivi(df, cfg, ut)` ré-échantillonne **avant** d'appliquer les filtres :
+`autorisePar(sup, cfg.filtres)` leur donne la série de DÉCISION, pas la H1 brute. Chaque
+filtre ré-échantillonne ensuite par sa propre unité — mais à partir d'une série qui a
+déjà perdu le détail. Et `resamplerBrut` ne connaît que **deux** seaux : `D1`, et tout le
+reste en `H4`.
+
+**Mesuré**, dix familles, RSI 14 seuil 50, total des trades :
+
+| unité du filtre | H1 | H4 | D1 | W1 |
+|---|---|---|---|---|
+| décision **H1** | 4 968 | 3 992 | 4 230 | **3 992** |
+| décision **D1** | 955 | 955 | 955 | 955 |
+
+**Deux faits, et le second est indépendant du premier.**
+
+**1 · Sous une décision D1, l'unité de chaque filtre est totalement inerte** — quatre
+valeurs, un seul chiffre. Le robot, lui, l'honore : `secs(etat.utRsi, 3600)` émet des
+seaux H1. *Les deux ne calculent pas la même chose, par construction.* Et ce sont les
+DÉFAUTS qui sont mixtes — `utRsi: 'H1'`, `utAdx: 'H1'`, `utPente: 'H4'` — donc il n'y a
+aucun réglage exotique à aller chercher.
+
+**2 · `W1` est replié sur `H4` par le moteur, même sous une décision H1** — 3 992 des
+deux côtés. Le robot porte `SECONDES = { …, W1: 604800 }` et fait de vraies semaines.
+L'interface offre W1 (`utPivot`, et la liste `['H1', 'H4', 'D1', 'W1']`). *Celui-là mord
+au réglage par défaut de la décision.*
+
+> **Un réglage que l'interface offre, que le moteur ignore et que le robot honore est la
+> classe complète prise à l'envers** — le harnais passe son temps à traquer ce que le
+> robot ne sait pas faire ; ici c'est le moteur qui ne fait pas ce qu'il annonce, et le
+> robot qui a raison. Rien ne ment visiblement : la ligne dit « RSI H1 », le chiffre est
+> du D1, le robot exporté calcule du H1, et l'écart s'impute au robot.
+
+**PORTÉE DE LA MESURE, en tête** : le défaut est établi sur le moteur et sur la table des
+secondes du générateur. Ce qui n'est PAS mesuré : la magnitude de l'écart robot ↔ moteur
+sur une configuration mixte réelle — il faudrait un rejeu —, et si la grille d'un scan
+produit spontanément des unités mixtes ou si l'utilisateur doit les choisir.
+
+**CE QUE LA RÉTRODICTION A RENDU, parce qu'elle était peu chère et qu'elle ferme une
+piste** : les neuf rejeux ne peuvent pas porter ce défaut. `CADRE.ut` vaut `D1` et les
+huit filtres de `references.mjs` portent `ut: "D1"` — aucune unité mixte. *Les trois
+écarts non expliqués du chantier MT5 ne viennent donc pas de là*, et le chapitre clos
+reste clos sur ce point.
+
+**LA SORTIE N'EST PAS UN REFUS D'EXPORT**, et c'est ce qui décide de la suite : refuser
+laisserait le moteur annoncer une unité qu'il n'applique pas. Il y en a deux, et elles
+s'excluent — le moteur ré-échantillonne depuis la H1 brute, ou l'interface cesse
+d'offrir une unité par filtre. La première rend vrai ce qui est écrit ; la seconde rend
+écrit ce qui est vrai. *Aucune des deux n'entre dans le lot qui a trouvé le défaut.*
