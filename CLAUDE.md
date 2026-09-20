@@ -6101,6 +6101,145 @@ lieu de 1, dans l'en-tête de grille du portefeuille.
 > marqueur marqué (`/*MUT*/`) rend l'inverse inambigu ; il ne rend pas la restauration
 > certaine.
 
+##### Cinq livraisons, quinze nombres rapportés, et aucun ne pouvait bouger
+
+Compté plutôt que juré, avec sa commande — `git show <commit>:Vuna.solo.html` sur chaque
+commit depuis `d62b937` :
+
+| version livrée | le marqueur |
+|---|---|
+| 260919.5 · 260920 · 260920.2 · 260920.4 · 260920.5 | **présent** |
+| 260920.6 | propre |
+
+**Cinq livraisons**, chacune rapportée avec sa taille, son md5 et sa `VERSION_APP`,
+**deux d'entre elles revérifiées par l'utilisateur sur ses propres copies** — et une
+balise cassée traversant l'ensemble sans qu'un seul de ces quinze nombres bouge d'un
+iota.
+
+> **Une empreinte est une preuve d'IDENTITÉ, pas de SANTÉ.** Elle prouve qu'on regarde
+> le même fichier ; elle ne dit rien de ce qu'il contient. Les trois nombres ne pouvaient
+> pas bouger — *ils ne mesurent pas ça*.
+
+**Et c'est l'utilisateur qui a posé la borne de son propre rôle**, ce qui vaut d'être
+écrit : *« mon rôle de vérification s'arrête exactement là, et l'avoir dit évite qu'on
+prenne mes ✓ pour plus qu'ils ne valent. »* C'est la famille de `netlify.toml` —
+*une règle dit où elle s'arrête, sinon elle se lit comme une garantie générale* —
+appliquée cette fois à une personne et non à un fichier de configuration.
+
+##### Le refus vit à la PUBLICATION, et il décode
+
+`publier-solo.mjs`, là où les deux `VERSION_APP` sont déjà confrontées : aucun marqueur
+de mutation dans ce qui est publié. Trois choses en font une garde et non un grep :
+
+| | ce qui est tenu |
+|---|---|
+| **elle DÉCODE** | le marqueur livré était en clair ; un marqueur laissé dans `moteur.js` voyage en **base64** et serait invisible à une recherche de texte. Mesuré à la mutation : `grep MUTX Vuna.solo.html` rend **0** pendant que la garde refuse — *chercher une chaîne dans une représentation qui ne la contient pas*, des deux côtés cette semaine |
+| **elle prouve sa PRISE** | un décodage qui ne rend presque rien ne regarde plus l'intérieur des modules, et « aucun marqueur » serait un zéro qui n'a rien vu. Seuil : 100 000 octets décodés, mesurés à **856 892** |
+| **le motif est MESURÉ** (règle 16) | `/*MUT` rend **0** sur l'artefact décodé ; `MUT` nu en rend **3** et `MUTATION` **7** — le mot vit dans la prose française du produit. Un motif sur `MUT` refuserait le cas normal le premier jour |
+
+Aucun module n'est nommé : la population est « toute suite base64 assez longue », donc un
+sixième module intégré y entre sans qu'une ligne change (règle 7). Éprouvée par deux
+mutations — le marqueur en clair, et le marqueur **caché dans un module base64** —, et
+chacune nomme laquelle des deux moitiés a mordu.
+
+**Et son récit n'épelle pas le marqueur** : le motif est composé (`"/" + "*MUT"`), sans
+quoi ce fichier serait sa propre victime. C'est la règle 3 vue depuis l'écrivain, prise
+avant la morsure plutôt qu'après — *le récit évite la forme du code*.
+
+## Un fond permanent de messages est un canal de diagnostic hors service
+
+**STATUT · INSTRUMENTATION, AUCUNE CAUSE PRÉTENDUE.** Rien n'est réparé : le fond est
+mesuré, classé, et devient une ligne de base surveillée. Le classement est MESURÉ DANS LE
+DÉPÔT ; le compte qui l'a déclenché — 47 erreurs, 48 avertissements — est RAPPORTÉ par
+l'utilisateur, et les deux tombent à l'unité.
+
+Chaque chargement de l'application écrit **quatre-vingt-quinze messages** en console.
+Mesuré, classé, et la réponse à la question posée est **non** — il y en a **trois**
+formes, pas deux :
+
+| classe | erreurs | avert. | ce que c'est |
+|---|---|---|---|
+| **A** · attribut SVG recevant un trou | **47** | 0 | `Error: <line> attribute y1: Expected length, "{{ … }}"` |
+| **B** · `input type="number"` recevant un trou | 0 | **46** | `… cannot be parsed, or is out of range.` |
+| **C** · `input type="date"` recevant un trou | 0 | **2** | `… does not conform to the required format, "yyyy-MM-dd".` |
+| **D** · manifeste de version sous `file://` | 2 | 0 (+1 requête) | n'existe pas sous `/app` |
+| **exceptions** (`pageerror`) | **0** | — | — |
+
+**La troisième forme est la trouvaille, et elle tient à une chaîne.** `type="date"` porte
+le même mécanisme que `type="number"` — un trou lu par l'analyseur d'attribut avant
+substitution — et un **autre message**. Un tri écrit sur « cannot be parsed » la manque,
+et c'est précisément par là qu'une quatrième entrerait sans se faire voir.
+
+**Un seul mécanisme, mesuré par son rapport** : 95 plaintes pour **3 084 trous** et 2 462
+noms distincts — donc **au plus 3 %** des trous atteignent un attribut que le navigateur
+type-vérifie. C'est ce qui vérifie l'hypothèse par le compte et non par la forme.
+
+### Le problème n'était pas le bruit, et le poser ainsi menait au mauvais correctif
+
+La première formulation était « faire taire les quatre-vingt-quinze ». C'est le mauvais
+bout, et c'est l'utilisateur qui l'a retourné : la console est un canal de développeur,
+les messages ne coûtent rien à personne. **Ce qu'ils coûtent, c'est la capacité de voir
+le quatre-vingt-seizième** — et ça ne se répare pas en supprimant les quatre-vingt-quinze.
+
+> **Ça se répare en donnant le canal à une garde plutôt qu'à un œil.** Un fond que
+> personne ne peut lire n'est pas un défaut d'hygiène, c'est un instrument débranché ; et
+> un instrument se rebranche sans qu'on touche à ce qu'il mesure.
+
+C'est la famille de « ce qui coûte, c'est ce qui arrête de chercher », prise à l'envers :
+là, une forme rassurante faisait cesser l'enquête ; ici, un fond illisible la rend
+impossible. Le remède est le même — *rendre décidable*, pas rendre silencieux.
+
+**Aucun correctif n'a donc été posé, et c'est le résultat.** `support.js` n'est pas
+touché, le gate `window.__resources` reste ce qu'il est — documenté au chapitre de la
+page blanche —, et le gabarit continue d'être analysé par le navigateur. Ce qui change
+est qu'on le saura si ça produit autre chose.
+
+### La garde est un REGISTRE de formes, et elle échoue dans les deux sens
+
+`scripts/app/console-au-chargement.test.mjs` capture la console d'un vrai navigateur sur
+le fichier livré, tous canaux — `console`, `pageerror`, `requestfailed`.
+
+| la moitié | ce qu'elle attrape | mutation qui la fait mordre |
+|---|---|---|
+| tout message tombe dans une classe **déclarée** | une forme INÉDITE, citée en toutes lettres | un message injecté au chargement → rouge, message cité |
+| toute classe déclarée compte **au moins une** occurrence | une classe MORTE, qui laisserait la garde verte sur du vide | une classe qui ne décrit rien → rouge, classe nommée |
+
+C'est la forme de `boucles-mql5` et du registre de `nom-vuna` : sans la seconde moitié,
+le registre devient une liste de tolérances — et surtout, **c'est elle qui est la PRISE**.
+Une page qui n'émettrait plus rien du tout satisferait la première sans rien prouver.
+
+**RETIRER une classe fait rougir la PREMIÈRE moitié, pas la seconde**, et la mutation le
+dit plutôt que l'inverse : ses messages deviennent orphelins et sont cités
+(`"{{ fenDu }}" does not conform…`). La seconde moitié parle quand la FORME disparaît de
+la page pendant que sa classe reste. Les deux sont couvertes, par des moitiés opposées.
+
+**`pageerror` reste à zéro, sans classe possible.** Une exception dans un producteur
+efface la page entière — `renderVals()` est une seule fonction. Il n'y a pas de forme
+acceptable pour ça, donc pas de tolérance à écrire.
+
+**Les comptes ne sont pas assertés** (règle 16) : 47 / 46 / 2 / 3 sont IMPRIMÉS, jamais
+exigés. Les figer ferait rougir la garde au premier trou ajouté à un attribut SVG — un
+faux refus sur le cas normal, donc une garde qu'on désactive.
+
+**La classe D porte SA CONDITION, et elle est étroite exprès.** Sous `file://` le
+manifeste est refusé, et le navigateur en tire trois lignes pour un fait — dont une,
+« Failed to load resource », ne nomme rien. L'accepter sans condition ferait de cette
+classe un trou qui avalerait n'importe quel échec réseau futur : elle n'est donc admise
+que si un échec **nommément sur le manifeste** a été vu dans la même capture.
+
+**Son angle mort est en tête** : elle charge en `file://`, comme les trois autres bancs
+de rendu, donc un message qui n'apparaîtrait que sous HTTP lui échappe. Le choix est
+déclaré plutôt que tu — c'était l'alternative posée, et le silence était la seule issue
+indéfendable.
+
+### Et la mutation la plus isolante du dépôt ne touche aucun fichier
+
+Elle s'injecte à l'exécution — `addInitScript` sous une variable d'environnement — donc
+elle ne peut rien emporter à la restauration. C'est la règle 13 prise par le bout où le
+problème n'existe pas : *une mutation qui ne modifie aucun fichier n'a pas de
+restauration à rater.* Là où c'est possible, c'est la forme à préférer.
+
+
 ### Et j'ai relu un artefact BASE64 au grep, puis rapporté une absence
 
 `grep PlafondResist Vuna.solo.html` rend **0**, et j'en ai conclu que le générateur était

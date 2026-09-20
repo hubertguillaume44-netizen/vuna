@@ -48,6 +48,66 @@ if (vSource !== vSolo) {
   process.exit(1);
 }
 
+// 2 bis. AUCUN MARQUEUR DE MUTATION DANS CE QU'ON PUBLIE.
+//
+//    Un `</*MUT*//span>` a ete livre dans CINQ versions — 260919.5 a 260920.5 — pose par
+//    une restauration de mutation qui a rendu `</span>` sous une forme abimee. Le
+//    navigateur en fait un commentaire bogue, la balise n'est jamais fermee, et
+//    l'element suivant descend d'un niveau dans l'arbre. Rien n'a rougi : ni la suite,
+//    ni la construction, ni les trois nombres rapportes a chaque livraison.
+//
+//    C'EST LA LECON, ET ELLE N'EST PAS SUR LA MUTATION : la taille et l'empreinte
+//    prouvent qu'on regarde le MEME fichier, jamais qu'il est JUSTE. Cinq artefacts
+//    rapportes avec leurs trois nombres, verifies de part et d'autre, et un `</span>`
+//    casse traversant l'ensemble sans qu'un seul de ces nombres bouge — ils ne
+//    pouvaient pas bouger, ils ne mesurent pas ca. *Une empreinte est une preuve
+//    d'IDENTITE, pas de SANTE.*
+//
+//    ELLE DECODE, PARCE QU'UN GREP SUR L'ARTEFACT NE VOIT PAS TOUT. Celui-la etait en
+//    clair ; un marqueur laisse dans `moteur.js` ou `robot-mt5.js` voyage en base64 et
+//    serait invisible a une recherche de texte — la classe « chercher une chaine dans
+//    une representation qui ne la contient pas », commise des deux cotes cette semaine.
+//    On decode donc toute suite base64 assez longue, sans nommer aucun module : un
+//    sixieme module inline entre dans la population sans qu'une ligne change ici.
+//
+//    LE MOTIF EST `/*MUT` ET NON `MUT`, ET C'EST MESURE (regle 16) : sur l'artefact
+//    decode du 20 septembre 2026, `/*MUT` rend 0, `MUT` nu en rend 3 et `MUTATION` 7 —
+//    le mot vit dans la prose francaise du produit. Un motif sur `MUT` refuserait donc
+//    le cas normal des le premier jour.
+//
+//    ANGLE MORT, ET IL EST DOUBLE. (1) Aucun test n'exerce ce refus : son echec est
+//    BRUYANT — la construction s'arrete —, donc la regle 15 ne s'applique pas, mais sa
+//    propre vacuite n'est gardee par rien. (2) Le recit de cette garde ne doit pas
+//    EPELER le marqueur : ce fichier serait alors sa propre victime. C'est pourquoi le
+//    motif ci-dessous est compose, et non ecrit en clair.
+const MARQUEUR = "/" + "*MUT";
+{
+  const brut = readFileSync(SOLO, "utf8");
+  let decode = "";
+  for (const run of brut.match(/[A-Za-z0-9+/]{200,}={0,2}/g) || []) {
+    try { decode += Buffer.from(run, "base64").toString("utf8") + "\n"; } catch (e) { /* pas du base64 */ }
+  }
+  // LA PRISE AVANT LE VERDICT : un decodage qui ne rend presque rien ne regarde pas
+  // l'interieur des modules, et « aucun marqueur » serait alors un zero qui n'a rien vu.
+  // Mesure le 20/09/2026 : 856 892 octets decodes pour 3,3 Mo d'artefact.
+  if (decode.length < 100000) {
+    console.error(`[publier-solo] ARRET : ${decode.length} octets decodes seulement — la`);
+    console.error("               recherche de marqueurs ne voit plus l'interieur des modules.");
+    console.error("               Le format d'integration de solo.mjs a change : reancrez la prise.");
+    process.exit(1);
+  }
+  const ou = [];
+  if (brut.includes(MARQUEUR)) ou.push("en clair dans l'artefact");
+  if (decode.includes(MARQUEUR)) ou.push("dans un module integre en base64");
+  if (ou.length) {
+    console.error(`[publier-solo] ARRET : un marqueur de mutation survit ${ou.join(" et ")}.`);
+    console.error("               Une mutation n'a pas ete defaite. La taille et l'empreinte");
+    console.error("               ne le diront pas : elles prouvent l'identite, pas la sante.");
+    console.error("               Defaites-la par l'echange inverse, puis relisez le FICHIER.");
+    process.exit(1);
+  }
+}
+
 // 3. Publier. Sans `dist/`, c'est que la construction du site n'a pas eu lieu :
 //    publier quand même laisserait un dossier orphelin que rien ne sert.
 const distDir = path.join(RACINE, "dist");
