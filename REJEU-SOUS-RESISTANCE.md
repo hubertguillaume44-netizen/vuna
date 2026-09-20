@@ -105,10 +105,28 @@ nouveau nombre : c'est votre **N-sans**. **Recochez le filtre** ensuite.
 
 ## 3 · Exporter le robot
 
+> ## ⚠ LA LIGNE DOIT VENIR D'UN SCAN, PAS DU BACKTEST
+>
+> **C'est une CONDITION du rejeu, pas un détail de confort, et elle manquait ici.** Une
+> ligne sauvegardée depuis le panneau Backtest ne garde pas la photo de ses réglages :
+> l'export repart alors d'un état où **tous les filtres sont éteints**, et le robot
+> descend **sans filtre** — avec, en en-tête, la mesure filtrée. Mesuré le 20 septembre
+> 2026 sur GOLD : `Filtres générés : aucun` sous `Mesuré : 237 trades`, et 316 trades au
+> testeur, soit un de plus que le compte SANS filtre.
+>
+> **Le geste correct** : lancez un **scan** (page *Mes scans*) sur votre instrument avec
+> cette configuration, puis validez la ligne que le scan produit. C'est elle qu'on
+> exporte.
+>
+> **Et l'application refuse désormais** : si le robot qu'elle produit n'annonce pas les
+> filtres que la ligne nomme, l'export est bloqué et le message dit les deux. Vous ne
+> pouvez plus tomber dans ce cas sans le savoir — mais vous ne pouvez pas non plus
+> exporter depuis une ligne née dans le Backtest si elle porte un filtre.
+
 Toujours avec le filtre coché :
 
-1. **Sauvegardez ce résultat** (le bouton du panneau Backtest) — la ligne rejoint *Mes
-   décisions*.
+1. Lancez le **scan** sur votre instrument, puis **validez la ligne** qui porte la
+   configuration du § 2 — la ligne rejoint *Mes décisions*.
 2. Page **Mes décisions → Portefeuille**, trouvez la ligne, colonne **ROBOT**, cliquez
    **Exporter**.
 3. Un fichier descend, nommé ainsi :
@@ -116,6 +134,18 @@ Toujours avec le filtre coché :
    ```
    Vuna_<compte>_<VOTRE_INSTRUMENT>_Achat_mediane_7_SL0p7_RR1p5_<horodatage>.mq5
    ```
+
+4. **Ouvrez le `.mq5` dans MetaEditor et lisez son en-tête avant de lancer quoi que ce
+   soit.** Deux lignes, l'une sous l'autre :
+
+   ```
+   //|  Filtres générés : sous résistance D1 20 (marge 1 %)
+   //|  Mesuré          : 237 trades · … R cumulés · … R/an
+   ```
+
+   **`Filtres générés` doit NOMMER le filtre.** S'il dit `aucun`, arrêtez-vous : le robot
+   ne reproduira pas la mesure annoncée juste en dessous, et le rejeu ne mesurerait que
+   ça. Trente secondes de lecture contre trente minutes de testeur.
 
    *Si le bouton est grisé*, survolez-le : l'infobulle dit pourquoi. Avec cette
    configuration-ci il ne doit pas l'être.

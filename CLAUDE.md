@@ -5826,6 +5826,125 @@ lieu.** Le second test lit les trois `ch(…)` de la tuile et exige que le docum
 sous ces noms-là. Mutation : un champ renommé dans le panneau le fait tomber en nommant le
 manquant — c'est le bon sens, le jour où l'écran change de mot c'est le document qui a tort.
 
+## L'ENTRÉE d'un refus était la SORTIE d'un effacement
+
+**STATUT · CAUSE ÉTABLIE — défaut LIVRÉ, symptôme et en-tête RAPPORTÉS par l'utilisateur
+(rejeu MT5 sur GOLD : 316 trades contre 237 attendus et 315 sans filtre ; en-tête du
+`.mq5` lu dans MetaEditor) ; mécanisme, correctif et les deux sens du refus MESURÉS DANS
+LE DÉPÔT.**
+
+C'est le défaut le plus cher du chantier MT5, et il n'est pas dans le port MQL5 : **le
+port n'a pas été appelé.**
+
+```
+//|  Filtres générés : aucun
+//|  Mesuré          : 237 trades · 54.67841631645627 R cumulés · 8.2 R/an
+```
+
+237 est le compte **avec** le filtre. Le robot a rendu **316**, un de plus que le compte
+sans filtre. Les deux lignes de cet en-tête viennent de deux sources — `cfg.n` pour la
+mesure, `etat.fResist` pour les filtres — et rien ne les confrontait.
+
+### Le mécanisme, relu sur le disque
+
+Une ligne née dans le **Backtest** ne porte ni `filtre` (la clé de variante) ni `_sid`.
+`etatDeLigne` n'a donc ni photo `_reg` ni archive à lire, et retombe sur
+`etatDeReference`, **qui force les neuf drapeaux de filtre à `false`**. Le générateur
+n'émet rien — et `filtresBloquants` lit **le même état effacé**, donc le refus d'export
+ne pouvait pas se déclencher non plus.
+
+> **L'entrée du refus était la SORTIE de l'effacement.** `filtresBloquants(etatDeReference(…))`
+> ne peut pas rendre autre chose qu'une liste vide : c'est un accord qui ne peut pas
+> échouer, donc il ne mesure rien. La prise circulaire du chapitre voisin, commise dans
+> le PRODUIT au lieu d'une garde — et sur le seul chemin qui fabrique un fichier.
+
+**L'export a donc été autorisé pour la mauvaise raison** : non parce que `fResist` était
+transposable, mais parce que personne ne l'a vu.
+
+### Et la consigne au-dessus de la ligne fautive NOMMAIT le défaut
+
+```js
+// l'état résolu de la ligne : réglages du scan qui l'a produite + sa variante.
+// C'est de là que sortent les filtres à écrire — les deviner depuis l'intitulé
+// donnerait un robot sans filtre sous un en-tête qui en annonce un.
+const etat = this.etatDeLigne(v);
+```
+
+**« un robot sans filtre sous un en-tête qui en annonce un »** est la description exacte
+de ce qui est descendu. La prose nomme le symptôme, certifie que la route choisie
+l'évite, et la route choisie le produit.
+
+> C'est « une consigne qui nomme la bonne propriété ne prouve pas que le code la lit »,
+> sous sa forme la plus achevée : les deux précédentes affirmaient une propriété vraie
+> sur un objet qui ne la portait pas. Celle-ci **décrit le défaut lui-même** et le
+> déclare impossible. *Plus une consigne est précise sur ce qu'elle évite, plus elle
+> éteint l'enquête quand elle se trompe.*
+
+### Ce que l'application SAVAIT, écrivait à l'écran, et n'a pas fait descendre
+
+C'est la partie à nommer avant le correctif, et c'est la plus instructive :
+
+| l'écran disait | le fichier a fait |
+|---|---|
+| la rangée affichait le filtre (`v.filtres`, « Plus haut D1 · … ») | `Filtres générés : aucun` |
+| la colonne de période disait **« configuration → introuvable »** | export autorisé |
+| la réserve de rangée disait **« non vérifié »** | en-tête affirmant 237 trades |
+
+> **Trois écrans savaient, et aucun ne gardait la porte.** Une information qui n'est
+> rendue qu'à l'œil ne protège que ce que l'œil regarde — et personne ne relit une
+> colonne de période au moment de cliquer sur Exporter. *Ce qui est écrit à l'écran n'est
+> pas un garde-fou ; c'est un garde-fou qui a renoncé à être un refus.*
+
+Et la ligne porte ses filtres **deux fois, sous deux formes** : `ligneBt()` transporte un
+libellé (`filtres`) que la rangée affiche, `etatDeLigne` rend des drapeaux que l'export
+lit. Deux représentations du même fait sur la même ligne, l'une affichée, l'autre
+exportée, et rien ne les confrontait — la figure de `deposes`, cette fois entre l'écran et
+le fichier livré. **Et ce n'est pas propre à `fResist`** : les neuf filtres disparaissent
+pareil.
+
+### La confrontation porte sur deux RÉSULTATS, jamais sur des drapeaux
+
+Compter les drapeaux aurait demandé d'en tenir la liste dans le prédicat — neuf
+aujourd'hui, dix demain, et le dixième manquerait en silence. `filtresPerdus` compare donc
+ce que la **ligne** annonce (`v.filtres`, le libellé qu'elle porte) à ce que le **fichier**
+annonce (sa ligne « Filtres générés », lue dans l'artefact déjà produit). Un filtre de plus
+entre dans la confrontation sans qu'une ligne change (règle 7).
+
+**Trois issues, et la troisième est celle qui manquait là où elle produit un fichier** —
+elle existait déjà dans le prédicat `w1Perimee` et dans la sonde :
+
+|  | ce qui se passe |
+|---|---|
+| les deux s'accordent | on exporte |
+| les deux se contredisent | on refuse, **en citant les deux**, dans les deux sens |
+| la ligne ne dit pas ce qu'elle porte | on refuse — *une ligne dont on IGNORE les filtres n'est pas une ligne SANS filtres* |
+
+**Le refus vit APRÈS la génération et AVANT toute écriture**, et la garde tient l'ordre :
+posé après, il lit l'artefact réel plutôt que l'intention de le produire ; posé avant la
+trace du Journal, il évite que le registre annonce un robot qui n'est pas descendu.
+
+`scripts/app/robot-porte-les-filtres-de-sa-ligne.test.mjs` extrait le prédicat du produit
+et le joue contre de vrais robots émis, dans les deux sens, avec ses deux accords qui ne
+refusent rien (règle 16). Éprouvée par **quatre** mutations, chacune relue sur son
+message — dont une refaite : la première modélisait mal le fait visé et rougissait par la
+branche voisine.
+
+### Et les deux preuves étaient nécessaires — c'est la GROSSIÈRE qui a mordu
+
+Le dossier portait deux échelles d'erreur, écrites d'avance : la fine (1,2 %, sous le
+bruit du testeur, prouvée bougie par bougie dans le dépôt) et la **grossière** (une
+transcription rate de 30 %, et un rejeu la lit sans finesse). La garde fine était verte et
+juste ; c'est le rejeu grossier qui a trouvé que le port n'était pas exécuté.
+
+> **Une garde qui prouve la formule ne prouve pas qu'on l'appelle.** Les paramètres
+> avaient été dérivés du texte émis, la structure assertée dans le corps émis — et le
+> texte émis ne contenait pas le filtre, parce que l'état d'entrée ne le portait pas. *La
+> dérivation remonte jusqu'à son entrée et s'arrête là ; ce qui fabrique cette entrée
+> reste hors de portée.*
+
+Le geste qui en sort, et il vaut pour tout port : *après avoir dérivé du texte émis,
+demander ce qui fabrique l'état dont ce texte est dérivé.*
+
 ## Une garde vérifie ce qui est ÉMIS ; une personne vérifie ce qui est ÉCRIT
 
 **PROVENANCE · la vérification FAUSSE est celle de l'utilisateur, rapportée par lui.**

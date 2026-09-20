@@ -8206,6 +8206,76 @@ class Component extends DCLogic {
       return false;
     }
   }
+  // ————— CE QUE LA LIGNE DIT, CONTRE CE QUE LE FICHIER DIT —————
+  //
+  // Défaut LIVRÉ le 20/09/2026, et c'est le plus cher du chantier MT5 : un robot GOLD
+  // descendu avec « Filtres générés : aucun » sous « Mesuré : 237 trades » — 237 étant
+  // le compte AVEC le filtre. Rejoué au testeur : 316 trades, un de plus que le compte
+  // SANS filtre. Le port MQL5 n'était pas en cause : il n'avait pas été appelé.
+  //
+  // LE MÉCANISME, relu sur le disque et non supposé. Une ligne née dans le Backtest ne
+  // porte ni `filtre` (la clé de variante) ni `_sid` : `etatDeLigne` n'a donc ni photo
+  // `_reg` ni archive à lire, et retombe sur `etatDeReference`, QUI FORCE LES NEUF
+  // DRAPEAUX DE FILTRE À FALSE. Le générateur n'émet rien, et `filtresBloquants` lit
+  // le même état effacé : le refus d'export ne pouvait pas se déclencher non plus.
+  //
+  // > L'entrée du refus était la SORTIE de l'effacement. Un accord qui ne peut pas
+  // > échouer ne mesure rien — la prise circulaire du registre, commise dans le
+  // > produit au lieu d'une garde, et sur le chemin qui fabrique un fichier.
+  //
+  // Et la consigne écrite au-dessus de `etatDeLigne` NOMMAIT ce défaut en le certifiant
+  // absent : « les deviner depuis l'intitulé donnerait un robot sans filtre sous un
+  // en-tête qui en annonce un ». C'est la classe « une consigne qui nomme la bonne
+  // propriété ne prouve pas que le code la lit », sous sa forme la plus achevée : la
+  // prose décrit le symptôme exact et dit que la route choisie l'évite.
+  //
+  // LA CONFRONTATION PORTE SUR DEUX RÉSULTATS, jamais sur des drapeaux. Compter les
+  // drapeaux demanderait d'en tenir la liste ici — dix aujourd'hui, onze demain, et le
+  // onzième manquerait en silence. On compare ce que la LIGNE annonce (`v.filtres`, le
+  // libellé qu'elle porte et que la rangée affiche) à ce que le FICHIER annonce (sa
+  // ligne « Filtres générés »). Un filtre de plus entre dans la confrontation sans
+  // qu'une ligne change ici.
+  //
+  // TROIS ISSUES, et la troisième est celle qui manquait — elle existait déjà dans la
+  // sonde W1 et dans le prédicat, et pas là où elle produit un fichier :
+  //   · les deux s'accordent            → on exporte ;
+  //   · les deux se contredisent        → on refuse, en citant les deux ;
+  //   · la ligne ne dit pas ce qu'elle porte → on refuse, parce qu'une ligne dont on
+  //     IGNORE les filtres n'est pas une ligne SANS filtres.
+  //
+  // FAUX REFUS À PRÉVOIR (règle 16), et il est déclaré parce qu'il n'est pas mesurable
+  // ici : une ligne enregistrée par une version antérieure au champ `filtres` tomberait
+  // dans la troisième issue. `ligneBt()` et `basculerValide` le posent tous les deux
+  // aujourd'hui, donc la population devrait être vide — mais c'est une mesure sur les
+  // données de quelqu'un, pas sur une fixture, et je ne l'ai pas faite.
+  filtresPerdus(v, txt) {
+    const m = /Filtres g\u00e9n\u00e9r\u00e9s\s*:\s*(.+?)\s*$/m.exec(String(txt || ''));
+    if (!m) {
+      return 'le robot produit ne porte pas sa ligne « Filtres générés » : rien ne permet '
+        + 'de vérifier qu\u2019il reproduit la mesure de cette ligne.';
+    }
+    const auFichier = m[1].trim();
+    const auRobot = auFichier !== 'aucun';
+    const dit = String((v && v.filtres) || '').trim();
+    if (!dit) {
+      return 'cette ligne n\u2019enregistre pas les filtres de sa mesure : on ignore ce '
+        + 'que le robot devrait reproduire. Une ligne dont on IGNORE les filtres n\u2019est '
+        + 'pas une ligne sans filtres — relancez un scan et exportez depuis la ligne qu\u2019il '
+        + 'produit.';
+    }
+    const aLaLigne = dit !== 'Aucun filtre';
+    if (aLaLigne === auRobot) return '';
+    if (aLaLigne) {
+      return 'la ligne porte « ' + dit + ' », et le robot serait descendu avec « Filtres '
+        + 'générés : ' + auFichier + ' ». Il n\u2019aurait pas reproduit la mesure tout en '
+        + 'l\u2019annonçant en en-tête. Cause connue : une ligne sauvegardée depuis le '
+        + 'Backtest ne garde pas la photo de ses réglages, et l\u2019export repart alors d\u2019un '
+        + 'état où tous les filtres sont éteints. Relancez un scan et exportez depuis la '
+        + 'ligne qu\u2019il produit.';
+    }
+    return 'la ligne annonce « Aucun filtre » et le robot serait descendu avec « Filtres '
+      + 'générés : ' + auFichier + ' » : il mesurerait autre chose que la ligne.';
+  }
   async exporterRobotBrut(v) {
     let mod = null;
     // Paramètre de version : un import dynamique est mis en cache par URL pour toute la
@@ -8304,6 +8374,19 @@ class Component extends DCLogic {
     } catch (e) {
       this.setState({ hasardMsg: 'Robot non exporté pour ' + this.nomComplet(v.sym) + ' : ' + (e && e.message) });
       return false;
+    }
+    // ————— LE FICHIER DOIT DIRE CE QUE LA LIGNE DIT —————
+    // Posé APRÈS la génération, parce que la confrontation porte sur l'artefact et non
+    // sur l'intention de le produire : on lit l'en-tête que le robot porte réellement.
+    // Rien n'est écrit ni enregistré tant que les deux sources ne s'accordent pas — la
+    // trace du Journal, en particulier, annoncerait un robot qui n'existe pas.
+    {
+      const perdus = this.filtresPerdus(v, txt);
+      if (perdus) {
+        this.setState({ hasardMsg: 'Robot non exporté pour ' + this.nomComplet(v.sym)
+          + ' : ' + perdus });
+        return false;
+      }
     }
     // La DATE D'EXPORT, seule chose que le déploiement demande de mémoriser : sans elle
     // on ne distingue pas « robot jamais exporté » de « exporté mais pas encore lancé ».
@@ -17560,7 +17643,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260920.7';
+  VERSION_APP = '260920.8';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
