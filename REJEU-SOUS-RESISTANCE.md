@@ -154,10 +154,27 @@ Calculez l'écart entre vos deux nombres :
 séparation = (N-sans − N-avec) / N-sans × 100
 ```
 
-**Si cette séparation est inférieure à 15 %, changez d'instrument.** Le testeur MT5 a son
-propre bruit — mesuré à **7,5 % et 11,0 %** sur les deux instruments déjà rejoués — et
-en dessous de 15 % le test ne peut rien trancher : le résultat serait compatible avec les
-deux réponses.
+**Si cette séparation est inférieure à 20 %, changez d'instrument.**
+
+Ce seuil n'est pas « un peu au-dessus du bruit » : il se calcule. Le testeur MT5 a son
+propre bruit — mesuré à **7,5 % et 11,0 %** sur les deux instruments déjà rejoués —, donc
+un résultat compte comme « proche de N-avec » dans `[0,89 ; 1,11] × N-avec`, et comme
+« proche de N-sans » dans `[0,89 ; 1,11] × N-sans`. Pour que les deux lectures ne puissent
+pas être vraies en même temps, il faut que la bande haute de la première passe sous la
+bande basse de la seconde :
+
+```
+1,11 × N-avec  <  0,89 × N-sans
+⟺  N-avec / N-sans  <  0,802
+⟺  séparation  >  19,8 %
+```
+
+**En dessous, les deux bandes se recouvrent** — à 15 % de séparation, le recouvrement va
+de `0,890` à `0,944 × N-sans`, et un résultat qui tombe là est *simultanément* « à ± 11 %
+de N-avec » et « proche de N-sans ». Il n'y a pas de ligne pour ce cas dans le tableau
+plus bas, et c'est exactement le cas que le seuil existe pour empêcher.
+
+On arrondit à **20 %**, du côté sûr.
 
 *Mesuré sur les dix séries d'exemple, avec exactement cette configuration, pour vous dire
 quelle séparation est normale :*
@@ -172,12 +189,18 @@ quelle séparation est normale :*
 | VX-40 | 93 | 135 | 31,1 % |
 | VX-2000 | 97 | 134 | 27,6 % |
 | VX-CU | 112 | 143 | 21,7 % |
-| VX-TECH | 113 | 138 | 18,1 % |
-| VX-BTC | 158 | 177 | 10,7 % |
+| ~~VX-TECH~~ | 113 | 138 | **18,1 % — inutilisable** |
+| ~~VX-BTC~~ | 158 | 177 | **10,7 % — inutilisable** |
 | **les dix ensemble** | **950** | **1 328** | **28,5 %** |
 
-La dernière ligne, VX-BTC, est exactement le cas à éviter : 10,7 %, sous le bruit du
-testeur. Sur un instrument comme celui-là, le rejeu ne dirait rien.
+**Deux séries sur dix sont sous le seuil, et elles n'y sont pas pour la même raison.**
+VX-BTC (10,7 %) est sous le **bruit** lui-même : les deux comptes sont indiscernables.
+VX-TECH (18,1 %) est au-dessus du bruit et quand même inutilisable — ses deux bandes se
+recouvrent encore. C'est ce qui rend le seuil calculé préférable à un seuil choisi : à
+l'œil, 18,1 % contre un bruit de 11 % a l'air suffisant.
+
+**Huit séries sur dix passent.** Un instrument réel un peu volatil a toutes les chances
+d'y être aussi.
 
 ### Ensuite : le nombre attendu
 
@@ -187,6 +210,16 @@ Ces 11 % ne sont pas une marge de confort : c'est le bruit mesuré du testeur lu
 le courtier utilisé porte jusqu'à **50 249 prix en désaccord** entre son propre historique
 de tiques et ses propres bougies M1, sur le même symbole. L'arbitre n'est pas plus fin
 que ça, et prétendre le contraire serait inventer une précision.
+
+### Et si aucun de vos instruments n'atteint 20 %
+
+**Alors le rejeu ne peut pas conclure, et il ne faut pas le faire.** Ce n'est pas un échec
+du port ni un défaut de vos données : c'est l'arbitre qui se récuse — il n'est pas assez
+fin pour la question posée. Mieux vaut le savoir maintenant que passer trente minutes puis
+lire un nombre qu'on ne saura pas interpréter.
+
+Dites-le moi simplement, et je chercherai l'autre bout : ce qui reste alors est de fermer
+l'échelle grossière autrement, pas de faire tourner un test qui ne tranche rien.
 
 ---
 
@@ -200,13 +233,22 @@ N-sans  (Vuna, filtre décoché)    = ______
 N-robot (MetaTrader)              = ______
 ```
 
-| Ce que vous voyez | Ce que ça veut dire |
+Les deux bandes ci-dessous **ne se recouvrent pas**, puisque votre séparation dépasse
+20 % — c'est à ça que servait l'étape précédente. Les six cas sont donc exclusifs, et il
+y en a un pour chaque résultat possible.
+
+| Où tombe N-robot | Ce que ça veut dire |
 |---|---|
-| **N-robot proche de N-avec** | ✅ le filtre agit dans le robot — c'est ce qu'on voulait savoir |
-| **N-robot proche de N-sans** | ❌ **le filtre ne filtre rien** : il est présent dans le code et sans effet. C'est le mode de panne visé |
-| **N-robot bien au-dessus de N-sans** | ❌ le filtre agit à l'envers, ou une borne est fausse |
-| **N-robot bien en dessous de N-avec** | ❌ le filtre coupe trop — fenêtre ou marge de travers |
-| **N-robot = 0** | le robot n'a pas tradé du tout : lisez le journal, ce n'est probablement pas le filtre (symbole refusé, devise non convertible, historique absent) |
+| **entre 0,89 et 1,11 × N-avec** | ✅ le filtre agit dans le robot — c'est ce qu'on voulait savoir |
+| **entre 0,89 et 1,11 × N-sans** | ❌ **le filtre ne filtre rien** : il est présent dans le code et sans effet. C'est le mode de panne visé |
+| **entre les deux bandes** | ⚠️ **indéterminé** — ni l'un ni l'autre. Le filtre agit, mais pas comme la mesure. C'est le cas qui demande le journal `CONF\|` (étape 7) |
+| **au-dessus de 1,11 × N-sans** | ❌ le filtre agit à l'envers, ou une borne est fausse |
+| **en dessous de 0,89 × N-avec** | ❌ le filtre coupe trop — fenêtre ou marge de travers |
+| **0** | le robot n'a pas tradé du tout : lisez le journal, ce n'est probablement pas le filtre (symbole refusé, devise non convertible, historique absent) |
+
+**La troisième ligne est celle qu'il ne faut pas forcer dans une des deux autres.** Un
+résultat entre les bandes n'est ni une réussite ni la panne visée : c'est un troisième
+état, et l'écrire évite de le lire comme le plus proche des deux.
 
 > C'est tout ce qu'il y a à regarder. Pas de R, pas de pourcentage de réussite, pas de
 > courbe : **un compte de trades**, comparé à deux autres.
@@ -221,7 +263,7 @@ Court, dans cet ordre :
 2. **les trois nombres** ci-dessus ;
 3. **la première ligne du journal du testeur** (onglet *Journal*) — elle dit si la
    conversion de devise a réussi, échoué, ou n'était pas nécessaire ;
-4. **seulement si N-robot s'écarte** : relancez une fois avec l'entrée `InpConformite`
+4. **si N-robot n'est pas dans la bande de N-avec** : relancez une fois avec l'entrée `InpConformite`
    cochée, et envoyez les lignes qui commencent par `CONF|`. Elles disent, journée par
    journée, ce que le robot a décidé et pourquoi — c'est ce qui permet de trouver *où*
    les deux lectures divergent, au lieu de le deviner.

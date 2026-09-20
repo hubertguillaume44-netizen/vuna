@@ -5654,12 +5654,70 @@ instrument — le compte avec le filtre, le compte en décochant la case. Mesur�
 | vx-yen 44,7 % · vx-or 41,4 % · vx-conso 36,0 % · vx-eur 33,3 % | vx-500 31,2 % · vx-40 31,1 % · vx-2000 27,6 % |
 | vx-cu 21,7 % · vx-tech 18,1 % | **vx-btc 10,7 %** |
 
-**Et une famille sur dix est SOUS le bruit de l'arbitre** (7,5 % et 11,0 % mesurés sur les
-deux instruments rejoués). Sur un instrument de ce genre, le rejeu ne dirait rien — et le
-lire comme une réponse serait pire que ne pas le faire. Le mode d'emploi fait donc
-**vérifier la séparation avant de lancer**, ce qui est le seul geste que ce chantier a
-appris et qui ne coûte rien : *le seuil de résolution d'un arbitre se mesure avant de lui
-confier une preuve.*
+#### Et le seuil d'exploitabilité se CALCULE — 19,8 %, pas « au-dessus du bruit »
+
+**PROVENANCE · l'arithmétique est de l'utilisateur, refaite ici avant d'être écrite.** Le
+mode d'emploi portait d'abord un seuil de 15 %, choisi comme « un peu au-dessus du bruit ».
+C'était un nombre magique, et il rendait le verdict AMBIGU au lieu de le protéger.
+
+Le bruit de l'arbitre vaut 7,5 % et 11,0 % sur les deux instruments rejoués. Un compte est
+donc « proche de N-avec » dans `[0,89 ; 1,11] × A`, et « proche de N-sans » dans
+`[0,89 ; 1,11] × S`. Pour que les deux lectures ne puissent pas être vraies **ensemble** :
+
+```
+1,11 × A < 0,89 × S   ⟺   A/S < 0,802   ⟺   séparation > 19,8 %
+```
+
+À 15 %, les deux bandes se recouvrent sur `[0,890 ; 0,944] × S` — et **la table de
+verdicts n'avait pas de ligne pour cette zone**, c'est-à-dire précisément pour le cas que
+le seuil existait pour empêcher.
+
+> **Une tolérance posée autour de DEUX références doit être disjointe des deux.** Ce n'est
+> pas une marge à choisir large au jugé : c'est une inégalité, et elle a une solution. Un
+> seuil qu'on compare au bruit répond à la mauvaise question — il faut le comparer à ce
+> que le bruit rend INDISTINGUABLE.
+
+**DEUX familles sur dix tombent, et pas pour la même raison** — c'est ce qui rend le calcul
+préférable au coup d'œil. `vx-btc` (10,7 %) est sous le **bruit** lui-même. `vx-tech`
+(18,1 %) est au-dessus du bruit et quand même inutilisable : ses deux bandes se recouvrent
+encore. À l'œil, 18,1 % contre 11 % a l'air suffisant.
+
+**Et la table de verdicts a gagné son troisième état au passage** : « entre les deux
+bandes » n'est ni la réussite ni la panne visée. Le forcer dans le plus proche des deux
+serait la figure du tiret qui couvre trois causes, sur un nombre au lieu d'une date.
+
+**Le refus se dit aussi dans l'autre sens.** Si aucun instrument n'atteint 20 %, le rejeu
+ne peut pas conclure — ce n'est pas un échec du port, c'est l'arbitre qui se récuse. Le
+mode d'emploi le dit AVANT les trente minutes, parce qu'un résultat qu'on ne saura pas
+interpréter coûte plus que pas de résultat : il a la forme d'une réponse.
+
+##### Et le tableau que la personne relit est confronté à une remesure
+
+Les dix séparations vivaient en prose, dans un document et dans le pied d'une garde —
+**deux copies d'un compte, sans commande**, écrites le jour même où ce fichier reproche
+cette forme ailleurs. Le pied ne les porte plus ; elles vivent dans
+`REJEU-SOUS-RESISTANCE.md`, et `sous-resistance-portee` les y **recalcule et les
+confronte**, dans les deux sens : une famille mesurée sans rangée, une rangée sans
+famille, un chiffre qui a dérivé.
+
+**Le classement est DÉRIVÉ, pas lu** : le seuil sort de la bande par l'inégalité
+ci-dessus, et le test exige que le document porte les deux bornes. Écrits à la main des
+deux côtés, il aurait suffi qu'un seul bouge — c'est la forme de `meme-horloge`, où le
+défaut n'est dans aucun maillon pris seul.
+
+> **Un chiffre qu'une PERSONNE relit avant d'agir est celui qui mérite le plus sa
+> commande.** Un tableau périmé n'a pas de symptôme : il envoie choisir un instrument sur
+> une séparation qui n'existe plus, et rien, dans un document, ne rougit.
+
+**ET LA QUATRIÈME MUTATION A MORDU LA MAUVAISE ASSERTION**, ce qui a corrigé la prise et
+non la garde. Retirer une rangée faisait tomber la PRISE — « au moins dix rangées lues » —
+avant la confrontation, avec un message qui parle de FORME quand le défaut est une
+POPULATION. La suite était rouge, la mutation semblait bonne.
+
+> **Une prise trop haute mord à la place de l'assertion qu'elle protège.** Elle doit
+> prouver que l'instrument LIT, rien de plus : au-delà, elle décrit le même défaut que la
+> vérification, et c'est elle qu'on lira. La prise est donc basse (cinq rangées) et c'est
+> la confrontation qui travaille.
 
 **ET LE BRIEF DEMANDAIT UNE SÉRIE D'EXEMPLE, ce qui n'est pas exécutable.** Les dix
 familles sont engendrées : aucun courtier n'en porte le symbole, et la garde de symbole du
