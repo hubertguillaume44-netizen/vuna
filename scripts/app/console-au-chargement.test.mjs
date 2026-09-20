@@ -58,9 +58,22 @@ const CHROMIUMS = [process.env.VUNA_CHROMIUM,
 // ————— LES CLASSES DÉCLARÉES —————
 // Chacune est une FORME de message, pas un compte. `ctx` porte ce que la capture entière
 // sait, pour les classes qui ont une condition (voir D).
+// ————— UNE SOURCE POUR LA VALEUR, TROIS CLASSES QUI LA LISENT —————
+//
+// Les trois classes de trou portaient chacune leur `includes("{{")`. Trois copies
+// adjacentes d'un même prédicat sont la classe de `REFUS_ROBOT` prise à son premier
+// jour : la quatrième copie n'existe pas encore, elle naîtra avec la classe E — et rien
+// n'aurait rappelé que le prédicat doit porter la VALEUR et non la seule forme.
+//
+// Nommée, l'omission se voit : une classe de trou qui n'appelle pas `surUnTrou` se lit
+// comme une classe qui tolère par la forme, c'est-à-dire comme un fond de bruit
+// CERTIFIÉ. Et la mutation de valeur (troisième, en pied) les couvre toutes les trois
+// d'un coup au lieu d'une.
+const surUnTrou = (m) => m.texte.includes("{{");
+
 const CLASSES = [
   // ————— LA VALEUR FAIT PARTIE DE LA CLASSE, ET C'EST CE QUI L'EMPÊCHE D'AVALER —————
-  // Les trois classes de trou portent `includes("{{")`, et ce n'est pas un ornement du
+  // Les trois classes de trou passent par `surUnTrou`, et ce n'est pas un ornement du
   // motif : une classe écrite sur la FORME seule — « Expected length » — absorberait un
   // VRAI défaut rendant `y1="NaN"`, qui se compterait au vert et se noierait dans les 47.
   // La garde aurait alors remplacé un fond de bruit par un fond de bruit CERTIFIÉ, ce qui
@@ -70,17 +83,17 @@ const CLASSES = [
     pourquoi: "le navigateur type-vérifie x1/y1/d/points… AVANT que le runtime DC "
       + "substitue le trou. Artefact d'analyse, une fois par chargement.",
     voir: (m) => m.type === "error"
-      && /^Error: <\w+> attribute [\w:-]+: /.test(m.texte) && m.texte.includes("{{") },
+      && /^Error: <\w+> attribute [\w:-]+: /.test(m.texte) && surUnTrou(m) },
   { cle: "B · input type=number recevant un trou",
     pourquoi: "même mécanisme, autre analyseur — la valeur d'un champ numérique.",
     voir: (m) => m.type === "warning"
-      && /cannot be parsed, or is out of range/.test(m.texte) && m.texte.includes("{{") },
+      && /cannot be parsed, or is out of range/.test(m.texte) && surUnTrou(m) },
   { cle: "C · input type=date recevant un trou",
     pourquoi: "MÊME mécanisme que B et AUTRE chaîne de message — c'est la classe qui "
       + "manquait au premier classement, et par laquelle une quatrième serait entrée "
       + "sans se faire voir. Un tri écrit sur « cannot be parsed » ne la voit pas.",
     voir: (m) => m.type === "warning"
-      && /does not conform to the required format/.test(m.texte) && m.texte.includes("{{") },
+      && /does not conform to the required format/.test(m.texte) && surUnTrou(m) },
   // ————— D PORTE SA CONDITION, ET ELLE EST ÉTROITE EXPRÈS —————
   // Sous `file://`, `fetch('version.json')` est refusé par la politique d'origine. Le
   // navigateur en tire TROIS lignes pour UN fait, dont une — « Failed to load resource »

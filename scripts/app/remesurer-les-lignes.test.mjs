@@ -99,9 +99,17 @@ test("les chiffres écrits viennent des fonctions du moteur, pas d'une seconde d
     + "divergerait du Backtest, et les deux écrans afficheraient deux vérités.");
   assert.match(BOUCLE, /const seg = this\.M\.segments\(trades, 5\);/,
     "les segments ne viennent plus de `segments`.");
-  assert.match(BOUCLE, /_mv: this\.MOTEUR_V/,
-    "la ligne remesurée ne reçoit plus l'estampille du moteur : elle resterait marquée "
-    + "périmée après avoir été remesurée, et le compte ne descendrait jamais.");
+  // ————— RÉANCRÉE : L'ESTAMPILLE A UNE SOURCE (règle 14, deuxième issue) —————
+  // Elle portait `_mv: this.MOTEUR_V`, écrit à la main ici. Les quatre sites qui datent
+  // une mesure passent désormais par `marqueMesure()` — une source, quatre lecteurs —
+  // et l'ancre de cette garde est partie avec la copie. Son INVARIANT n'a pas bougé :
+  // la ligne remesurée doit repartir datée, sinon elle reste marquée périmée pour
+  // toujours et le compte ne descend jamais.
+  assert.match(BOUCLE, /\.\.\.this\.marqueMesure\(\)/,
+    "la ligne remesurée ne reçoit plus l'estampille de mesure : elle resterait marquée "
+    + "périmée après avoir été remesurée, et le compte ne descendrait jamais. Elle "
+    + "porte DEUX estampilles depuis `marqueMesure()` — la règle du moteur et la "
+    + "version de l'application —, et les réécrire à la main ici les ferait diverger.");
   // par ligne, pas à la fin
   assert.match(BOUCLE, /this\.setState\(\{ valides: suite \},\s*\n\s*\(\) => this\.ecrirePf\(/,
     "l'écriture ne se fait plus ligne par ligne : un arrêt au milieu perdrait tout le "

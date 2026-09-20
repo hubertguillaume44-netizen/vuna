@@ -311,12 +311,30 @@ test("retirer ou garder le seau en formation rend le MÊME masque — mesuré, p
 //   filtre          utResist D1 · lookback 20 · marge 1 %
 //   ce qu'on lit    le NOMBRE DE TRADES du rapport, rien d'autre
 //
-// LA PRÉDICTION EST ÉCRITE AVANT LA MESURE, pour être relue telle quelle : sur les dix
-// familles d'exemple, cette configuration rend 950 trades avec le filtre et 1 328 sans.
-// Un robot qui reproduit le filtre doit donc être PLUS PRÈS de son compte Vuna avec
-// filtre que de son compte sans — l'écart entre les deux vaut 28,5 %, quatre fois le
-// bruit du testeur. Un port grossièrement faux — comparaison inversée, seau décalé de
-// dix, plafond sur la mauvaise série — ressort du côté « sans filtre », ou ailleurs.
+// LA PRÉDICTION EST UNE SÉPARATION, PAS UN NOMBRE — et ce n'est pas un détail de
+// formulation. `950` et `1 328` sont les TOTAUX des dix familles ; un rejeu porte sur UN
+// instrument. Annoncer 950 comme attente ferait échouer la vérification à coup sûr, et
+// l'échec serait celui de l'attente, pas du port.
+//
+// Ce qui se prédit est donc : le compte du robot doit être PLUS PRÈS du compte Vuna avec
+// filtre que du compte SANS filtre, les deux lus sur le même instrument en décochant la
+// case. Un port grossièrement faux — comparaison inversée, seau décalé de dix, plafond
+// sur la mauvaise série — ressort du côté « sans filtre », ou ailleurs.
+//
+// ET LA SÉPARATION SE VÉRIFIE AVANT DE LANCER, sinon l'arbitre ne peut pas trancher.
+// Mesuré ici, même configuration, par famille :
+//
+//   vx-yen 44,7 %   vx-or 41,4 %   vx-conso 36,0 %   vx-eur 33,3 %   vx-500 31,2 %
+//   vx-40 31,1 %    vx-2000 27,6 % vx-cu 21,7 %      vx-tech 18,1 %  vx-btc 10,7 %
+//
+// Le bruit du testeur vaut 7,5 % et 11,0 % sur les deux instruments déjà rejoués. UNE
+// famille sur dix — vx-btc, 10,7 % — est donc SOUS le bruit : sur un instrument de ce
+// genre le rejeu ne dirait rien, et le lire comme une réponse serait pire que ne pas le
+// faire. C'est la règle déjà écrite pour ce chantier — le seuil de résolution d'un
+// arbitre se mesure avant de lui confier une preuve.
+//
+// Le mode d'emploi pour le faire tourner vit dans `REJEU-SOUS-RESISTANCE.md`, à la
+// racine : il est écrit pour quelqu'un qui n'a pas lu ce dépôt.
 //
 // CE QUE CE REJEU NE TRANCHE PAS, et c'est mesuré : les erreurs à 0,4 %, 1,2 % et 4,2 %
 // sont sous le bruit. Il ne remplace donc AUCUNE des gardes ci-dessus — il ferme l'autre

@@ -190,36 +190,17 @@ contre l'utilisateur, donne déjà la borne pessimiste pour un coût nul.
 **e. Dates de trades dans la sortie du scan.** Permettrait le vrai creux de portefeuille
 (au lieu du pire par ligne) et une courbe d'équité réelle pour le mélange.
 
-**f. AU PREMIER CLIENT : vérifier si une ligne enregistrée porte une unité `W1` mesurée
-avant `260920.5`.** Si oui, la marquer — elle affiche un chiffre obtenu sous l'ancien
-repli de `W1` sur `H4`, sous une étiquette qui dit « semaine », et rien ne la distingue
-d'une ligne juste. Le robot exporté depuis elle, lui, fait de vraies semaines : l'écart
-est mesuré à 13 270 bougies sur la première famille d'exemple.
+**f. LE REPLI DE `W1` SUR `H4` : la dette est FERMÉE, et par du code plutôt que par
+cette ligne.** Elle disait « au premier client, vérifier si une ligne enregistrée porte
+une unité `W1` mesurée avant `260920.5` ». C'était une VIGILANCE — quelqu'un devait
+relire ce registre au bon moment, et un registre qu'on ne relit pas au bon moment n'est
+pas une dette, c'est une trace.
 
-Le prédicat est `_reg.fXxx && _reg.utXxx === 'W1'`, **écrivable sans changer le format
-enregistré** — `REGLAGES` porte déjà les neuf drapeaux et les neuf unités, et
-`snapshotReglages` les copie. Trois issues et non deux : porte le défaut, ne le porte
-pas, et « je ne peux pas le dire » — `_exact` porte déjà ce troisième état, puisqu'une
-photo n'est posée que quand elle est fidèle.
-
-**Population vide au 20/09/2026, mesurée chez l'utilisateur unique.** Ce n'est pas un
-jugement de rareté : c'est une mesure datée, et c'est ce qui la fait cesser d'être vraie
-visiblement. `MOTEUR_V` n'a donc pas tourné — il n'y avait rien à périmer, pas « peu de
-monde à déranger ».
-
-**NE PAS LA CONFONDRE AVEC LE CORRECTIF DU 20/09/2026** — « aucune unité de filtre plus
-fine que l'unité de décision ». Les deux parlent d'unités et ce sont deux affaires : ici
-une unité `W1` mesurée sous l'ancien repli ; là une unité plus FINE que la décision.
-Vérifié dans le navigateur sur le fichier livré, plutôt que supposé : une unité `W1`
-survit entièrement à la nouvelle normalisation — `tendance_mtf`, `pivot` et
-`sous_resistance` la gardent sous les trois unités de décision, puisque `W1` est plus
-grossière que toutes. **Cette dette-ci n'est donc pas refermée par ce correctif**, et le
-retirer aurait perdu un cas encore atteignable.
-
-*Cette ligne vit ICI parce que son déclencheur est un événement du monde — un client qui
-enregistre une ligne `W1` — qu'aucune garde du dépôt ne peut constater. Le détail est
-dans CLAUDE.md, « L'unité d'un filtre est INERTE dans le moteur » ; une dette rangée dans
-un registre que personne ne relit au bon moment n'est pas une dette, c'est une trace.*
+Le prédicat est écrit (`w1Perimee`, avec son estampille `_va`), la ligne se marque
+d'elle-même à l'écran, et `ligne-w1-perimee` le tient sur un semis à trois issues. Le
+déclencheur n'est plus un événement que personne ne peut constater : c'est la ligne
+elle-même qui le dit à celui qui la regarde. *Le pourquoi reste dans CLAUDE.md, « L'unité
+d'un filtre est INERTE dans le moteur » ; ce qui est parti d'ici, c'est le rappel.*
 
 ## Ce qui est acquis et ne doit pas régresser
 

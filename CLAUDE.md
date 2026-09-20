@@ -260,6 +260,7 @@ supprimé : l'occupation réelle du navigateur est bien celle des deux.
 | `Export_H1_Vuna.mq5`, `Vuna_Releve.mq5` | scripts MT5 téléchargés par l'utilisateur |
 | `aide-index.json` | **artefact**, régénéré par `npm run app:aide` après tout changement de `title=` |
 | `src/lib/textes-recopies.ts` | **la source** des textes qui engagent et qu'aucune garde n'atteint — vente et après-vente, recopiés à la main ; vide et marquée tant que le statut n'est pas tranché |
+| `REJEU-SOUS-RESISTANCE.md` | le mode d'emploi du seul rejeu MT5 qui reste à faire, écrit pour quelqu'un qui n'a pas lu ce dépôt |
 
 À chaque livraison : `npm run app:version` avant `npm run app:solo` — voir « La version
 affichée est une date » plus bas.
@@ -5631,6 +5632,42 @@ soit déjà clos ou encore en formation change l'indice trouvé, jamais la fenê
 > robuste. Ce qui mord, ce sont la fenêtre, la borne du plafond et la marge : trois
 > mutations, trois rouges.
 
+### Un TOTAL n'est pas une attente, et un mode d'emploi n'est pas une prédiction
+
+**PROVENANCE · le piège est nommé par l'utilisateur ; les séparations par famille sont
+MESURÉES DANS LE DÉPÔT, même configuration que le port.**
+
+Le pied de `sous-resistance-portee` portait sa prédiction ainsi : *« cette configuration
+rend 950 trades avec le filtre et 1 328 sans »*. Les deux nombres sont justes — ce sont
+les **totaux des dix familles**. Un rejeu porte sur **un** instrument.
+
+> **Livrer un total comme attente fait échouer la vérification à coup sûr, et l'échec est
+> celui de l'attente, pas de ce qu'elle prétend mesurer.** C'est la figure des deux
+> populations comptées l'une pour l'autre, commise sur le seul chiffre qu'un utilisateur
+> allait relire.
+
+Ce qui se prédit est donc une **séparation**, et elle se lit sur les deux nombres du même
+instrument — le compte avec le filtre, le compte en décochant la case. Mesuré par famille :
+
+| | |
+|---|---|
+| vx-yen 44,7 % · vx-or 41,4 % · vx-conso 36,0 % · vx-eur 33,3 % | vx-500 31,2 % · vx-40 31,1 % · vx-2000 27,6 % |
+| vx-cu 21,7 % · vx-tech 18,1 % | **vx-btc 10,7 %** |
+
+**Et une famille sur dix est SOUS le bruit de l'arbitre** (7,5 % et 11,0 % mesurés sur les
+deux instruments rejoués). Sur un instrument de ce genre, le rejeu ne dirait rien — et le
+lire comme une réponse serait pire que ne pas le faire. Le mode d'emploi fait donc
+**vérifier la séparation avant de lancer**, ce qui est le seul geste que ce chantier a
+appris et qui ne coûte rien : *le seuil de résolution d'un arbitre se mesure avant de lui
+confier une preuve.*
+
+**ET LE BRIEF DEMANDAIT UNE SÉRIE D'EXEMPLE, ce qui n'est pas exécutable.** Les dix
+familles sont engendrées : aucun courtier n'en porte le symbole, et la garde de symbole du
+robot refuserait de démarrer. Le rejeu se fait sur un instrument de l'utilisateur, et
+c'est même meilleur — les deux nombres décrivent SES données au lieu des miennes. Les dix
+familles gardent leur rôle : elles disent quelle séparation est normale, donc si la ligne
+choisie peut trancher.
+
 ### Et la garde du miroir de vente a dû SUIVRE le retrait, pas être réécrite
 
 `fResist` quitte `INCONNUS` ; il reste dans `SANS_SYMETRIQUE_VENDEUR`. Les deux faits
@@ -5902,12 +5939,116 @@ qui sont justes le jour où quelqu'un en a une.
 > second devient faux au premier client, sans que rien ne le signale. *Un refus se
 > justifie par ce qui cessera d'être vrai en même temps que lui.*
 
-**LA DETTE VIT DONC AUSSI DANS `PASSATION.md`, et c'est là qu'elle sert.** Son
-déclencheur — le premier client qui enregistre une ligne `W1` — est un événement du
-MONDE, qu'aucune garde du dépôt ne peut constater ; et ce fichier-ci pèse 362 332 octets.
-*Une dette rangée dans un registre que personne ne relit au bon moment n'est pas une
-dette, c'est une trace.* Elle y est écrite par son DÉCLENCHEUR — « au premier client » —
-et non par son sujet, pour être trouvée par quelqu'un qui ne cherchait pas `W1`.
+**ET LE PRÉDICAT EST ÉCRIT DEPUIS — c'est l'objection qui est tombée, pas le motif.**
+Le refus tenait sur « son test compterait zéro », et il restait un refus par la
+population. **La population est vide dans les DONNÉES d'un utilisateur, pas dans une
+fixture** : trois lignes semées, une par issue, la font exister et le test compte trois.
+Le dépôt savait déjà le faire — le semis des décisions pose une ligne refusée à l'export
+pour que le refus ait un cas, et il a été écrit pour la même raison.
+
+> **« Aucun cas n'existe » et « aucun cas n'existe CHEZ QUELQU'UN » ne se répondent pas
+> pareil.** La seconde est une mesure sur des données, et un banc n'en dépend jamais :
+> il pose le cas. Confondre les deux fait refuser une garde en croyant refuser un zéro.
+
+**LA DETTE A DONC QUITTÉ `PASSATION.md`.** Elle y était écrite par son DÉCLENCHEUR — « au
+premier client » —, c'est-à-dire par un événement du monde qu'aucune garde ne peut
+constater : de la **vigilance**, et ce fichier-ci en a mesuré quatre fois le rendement.
+Le prédicat la remplace par de la **construction** — la ligne se marque elle-même à
+l'écran de celui qui la regarde, avec ses trois issues. *Ce qui reste dans le registre,
+c'est le pourquoi ; ce qui est parti, c'est le rappel.*
+
+### Le prédicat est écrit, et c'est la GARDE qui a trouvé le quatrième site d'estampille
+
+**STATUT · CAUSE ÉTABLIE — le repli est MESURÉ DANS LE DÉPÔT (13 270 bougies), la
+population touchée est RAPPORTÉE par l'utilisateur (zéro chez lui au 20/09/2026), le
+correctif et ses trois issues MESURÉS DANS LE DÉPÔT, au rendu, sur le fichier livré.**
+
+Ce qui manquait pour dater le défaut n'était pas le prédicat : c'était une **estampille de
+version**. `_mv` dit sous quelle RÈGLE les trades ont été calculés ; rien ne disait sous
+quelle VERSION. Sans elle, une ligne portant une unité `W1` mesurée hier et une mesurée
+sous le correctif sont indistinguables — et marquer les deux serait un faux refus sur le
+cas normal (règle 16).
+
+**L'ABSENCE de l'estampille est l'information, et c'est ce qui rend la migration
+inutile.** Toute ligne mesurée avant cette version n'en porte pas, par construction : il
+n'y a rien à convertir et rien à deviner. C'est la même figure que `_reg` — une photo
+n'est posée que quand elle est fidèle, donc son absence dit quelque chose de vrai.
+
+**ET LA GARDE A TROUVÉ UN QUATRIÈME SITE D'ESTAMPILLE QUE JE N'AVAIS PAS VU.** Trois
+avaient été convertis à la main — les deux publications de scan et la remesure. Le
+quatrième est celui qui fabrique une ligne **VALIDÉE**, c'est-à-dire exactement la
+population que le prédicat interroge. Il ne portait donc pas `_va`, et toute ligne
+validée depuis aurait été marquée « mesurée avant le correctif » à tort.
+
+> **Une conversion à la main COMPTE ce qu'elle a touché, jamais ce qu'elle n'a pas
+> trouvé.** C'est le même compte de succès que la substitution en masse de la veille —
+> quatre surfaces annoncées pour cinq —, commis deux jours plus tard sur le geste
+> inverse : là on remplaçait un texte, ici on factorisait un objet. *La sortie est la
+> même : une source unique, et une garde qui compte ses LECTEURS.*
+
+`marqueMesure()` rend les deux estampilles, quatre sites l'appellent, et la garde exige
+qu'il n'existe **qu'une** écriture de `_mv` en clair — celle de la source. Un cinquième
+site écrit à la main redevient une copie, et une copie diverge à la première qu'on
+oublie.
+
+#### Trois issues, et la troisième est celle qui n'a pas de population
+
+|  | ce que la ligne rend |
+|---|---|
+| `_reg` posée à la validation | la configuration est RENDUE par `cfgCourante`, et on lit l'unité qu'elle produit |
+| archive de scan complète | idem — `_exact` couvre les deux |
+| ni l'une ni l'autre | « je ne peux pas le dire », jamais un silence |
+
+**La première ligne décide sur un RÉSULTAT** : on ne demande pas « la photo porte-t-elle
+un `utXxx` à W1 ? », ce qui serait réécrire dans le prédicat la table des couples
+drapeau/unité — neuf aujourd'hui, dix demain. On appelle la fonction qui construit la
+configuration, et on lit l'unité qu'elle met réellement dans le filtre.
+
+#### « Son test compterait zéro » était vrai du TEST et faux de la POPULATION
+
+Le prédicat avait été refusé une fois, et le motif était juste : une garde sur une
+population vide compte zéro. **Ce que le motif ne disait pas, c'est que la population est
+vide dans les DONNÉES d'un utilisateur, pas dans une fixture.**
+
+> **« Aucun cas n'existe » et « aucun cas n'existe CHEZ QUELQU'UN » ne se répondent pas
+> pareil.** La seconde est une mesure sur des données, et un banc n'en dépend jamais : il
+> POSE le cas. Confondre les deux fait refuser une garde en croyant refuser un zéro.
+
+Le dépôt savait déjà le faire, deux fois, et pour la même raison : le semis des décisions
+pose **une** ligne que le générateur refuse, parce que sans elle la tournée n'exerçait que
+le chemin qui réussit. Trois lignes semées ici, une par issue, et le test compte trois.
+
+#### Et la mutation est restée VERTE, ce qui a corrigé la table plutôt que la garde
+
+La comparaison de versions a été mutée en comparaison de **chaînes**. Les huit cas de la
+table sont passés — dont celui qui portait, en toutes lettres, l'étiquette « LE CAS QUI
+PIÈGE UNE COMPARAISON DE CHAÎNES » : `260921` contre `260920.5`, où le texte répond juste
+(`'1' > '0'` à la position qui décide).
+
+> **Une étiquette n'est pas une mesure, même écrite dans une garde.** Le cas avait été
+> choisi pour son air de piège, pas pour sa propriété — et il ne discriminait rien. Ce
+> qui discrimine est le **rang à deux chiffres** : `260920.9` contre `260920.10`, que le
+> texte ordonne à l'envers. Le dépôt en a livré (`260915.12`), donc le cas est réel.
+
+C'est la mutation INERTE prise du bon côté : elle ne disait pas que la garde était
+aveugle, elle disait que l'assertion ne mesurait pas ce qu'elle annonçait. *Une mutation
+verte se paie en heures ; celle-ci en a rendu une propriété qu'on croyait tenir.*
+
+#### Et le prédicat a d'abord été posé là où la valeur ne pouvait pas arriver
+
+Première forme : le marquage vivait dans le producteur de RANGÉE du portefeuille, qui lit
+un objet **mappé**. Cette projection énumère ses champs — elle n'emporte ni `_reg` ni
+`_va`. Le prédicat rendait donc « porte » quand on l'appelait à la main, et l'écran
+rendait « je ne peux pas le dire ».
+
+> **Un producteur juste dont la valeur ne rejoint jamais son trou** — la règle 11, sur un
+> objet intermédiaire au lieu d'un gabarit. Une garde de source aurait lu l'appel et
+> l'aurait trouvé correct ; c'est le RENDU qui l'a dit.
+
+Le calcul vit donc là où `v` est la ligne validée elle-même. Et la garde de rendu prouve
+sa PRISE avant de conclure — trois rangées vues — sans quoi « la marque n'y est pas »
+serait vrai d'un écran qui n'a pas fini de se peindre, et la mutation suivante se lirait
+comme une mutation voisine.
 
 ### B est tranché — et c'est le COMPTE NET qui a failli le faire classer bénin
 
@@ -6063,7 +6204,7 @@ configurations :
 > en décision D1, pas le premier client. C'est le correctif qui la rend vide par
 > construction.
 
-#### Et la dette `W1` de PASSATION.md n'est PAS retirée — vérifié plutôt que supposé
+#### Et la dette `W1` de PASSATION.md n'était PAS refermée par ce correctif — vérifié plutôt que supposé
 
 Il avait été écrit ici, puis repris dans le brief, que ce correctif rendait la dette du
 repli `W1` → `H4` inatteignable, donc à supprimer. **C'est faux, et l'erreur est née
@@ -6075,8 +6216,11 @@ ici** : les deux affaires ont été confondues parce qu'elles parlent toutes deu
 
 Mesuré dans le navigateur, sur le fichier livré : une unité `W1` **survit entièrement** à
 la normalisation — `tendance_mtf=W1`, `pivot=W1`, `sous_resistance=W1` sous les trois
-unités de décision, puisque `W1` est plus GROSSIÈRE que toutes. Le cas de la dette n'est
-donc pas fermé, et une ligne ancienne garde son chiffre périmé.
+unités de décision, puisque `W1` est plus GROSSIÈRE que toutes. Le cas de la dette
+n'était donc pas fermé, et une ligne ancienne gardait son chiffre périmé.
+
+*(Elle l'est depuis, par son propre prédicat — `w1Perimee`, plus haut. Ce qui l'a fermée
+n'est pas ce correctif-ci : c'est d'avoir écrit ce que ce correctif ne faisait pas.)*
 
 > **Deux défauts qui partagent un vocabulaire ne partagent pas une date de péremption.**
 > Le geste est celui du chapitre du fait plausible : *avant de retirer une dette, faire

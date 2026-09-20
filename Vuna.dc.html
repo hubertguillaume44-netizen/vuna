@@ -2577,6 +2577,9 @@
                           <sc-if value="{{ vl.aFenChoisie }}" hint-placeholder-val="{{ false }}">
                             <span style="font-size:10px;line-height:1.45;color:var(--color-accent-900)" title="{{ vl.fenChoisieAide }}">{{ vl.fenChoisieTxt }}</span>
                           </sc-if>
+                          <sc-if value="{{ vl.aW1 }}" hint-placeholder-val="{{ false }}">
+                            <span style="font-size:10px;line-height:1.45;color:{{ vl.w1Encre }}" title="{{ vl.w1Aide }}">{{ vl.w1Txt }}</span>
+                          </sc-if>
                         </span>
                         <span style="text-align:right;white-space:nowrap"><strong>{{ vl.rAn }}</strong></span>
                         <span style="text-align:right;white-space:nowrap">{{ vl.dd }}</span>
@@ -8474,10 +8477,14 @@ class Component extends DCLogic {
           // version n'en porte pas et vaut « tout l'historique ».
           ...(() => { const f = this.fenetreDeLigne({ ...(cfg || {}), sym });
             return f.complete ? {} : { fen: this.fenPlate(f) }; })(),
-          // règle du moteur qui a produit ces chiffres. Sans elle, une ligne mesurée sous
-          // l'ancienne règle s'affichait à côté d'un backtest recalculé sous la nouvelle,
-          // et partait telle quelle dans l'en-tête du robot exporté.
-          _mv: this.MOTEUR_V,
+          // règle du moteur qui a produit ces chiffres, ET version de l'application qui
+          // les a mesurés. Sans la première, une ligne mesurée sous l'ancienne règle
+          // s'affichait à côté d'un backtest recalculé sous la nouvelle, et partait telle
+          // quelle dans l'en-tête du robot exporté ; sans la seconde, un défaut de moteur
+          // refermé ne se date pas. QUATRIÈME site d'estampille, et c'est la garde qui
+          // l'a trouvé : trois avaient été convertis à la main, celui-ci — le seul qui
+          // fabrique une ligne VALIDÉE — avait été oublié.
+          ...this.marqueMesure(),
           // La photo des réglages : ce qui permet de rouvrir la ligne à l'identique dans
           // le Backtest et d'exporter le robot, même si le scan d'origine est supprimé.
           // Figée SEULEMENT si la variante a vraiment été retrouvée : sinon on graverait
@@ -12400,6 +12407,67 @@ GROUPES = {
     }
     return out;
   }
+  // ————— UNE LIGNE MESURÉE SOUS L'ANCIEN REPLI DE `W1` SUR `H4` —————
+  //
+  // STATUT · CAUSE ÉTABLIE — le repli est MESURÉ DANS LE DÉPÔT (13 270 bougies en
+  // désaccord sur la seule première famille d'exemple, `unites-agregees`), la population
+  // touchée est RAPPORTÉE par l'utilisateur : zéro ligne chez lui au 20/09/2026.
+  //
+  // Jusqu'à `260920.5`, `resamplerBrut` testait `H1`, puis `D1`, et faisait tomber tout
+  // le reste dans le seau de 4 h. Une unité de filtre `W1` était donc mesurée en H4,
+  // sous une étiquette qui dit « semaine » — et le robot exporté depuis cette ligne, lui,
+  // fait de vraies semaines. Rien ne distinguait ces lignes d'une ligne juste.
+  //
+  // LE PRÉDICAT MARQUE, IL NE PÉRIME PAS. `MOTEUR_V` ne tourne pas : tourner la clé
+  // périmerait les scans de tout le monde pour un cas qui se nomme. Ce qu'on doit à
+  // quelqu'un dont la ligne porte le défaut, c'est de le lui DIRE — remesurer est un
+  // geste qui existe déjà.
+  //
+  // ET IL EST DORMANT ET CORRECT, ce qui n'est pas la même chose qu'inutile. « Son test
+  // compterait zéro » est vrai du TEST et faux du prédicat : la population est vide dans
+  // les données d'un utilisateur, pas dans une fixture — trois lignes semées, une par
+  // issue, la font exister (`ligne-w1-perimee`).
+  SEUIL_W1 = '260920.5';
+  // « 260920.5 » et « 260921 » ne se comparent PAS comme des chaînes : en
+  // lexicographique, '260920.5' > '260921'. Deux nombres, le rang absent valant zéro.
+  // Une estampille absente est un AVANT — c'est ce que l'absence veut dire ici.
+  versionAvant(a, b) {
+    const n = (x) => String(x || '').split('.').map((y) => parseInt(y, 10) || 0);
+    const A = n(a), B = n(b);
+    if (!A[0]) return true;
+    return A[0] !== B[0] ? A[0] < B[0] : (A[1] || 0) < (B[1] || 0);
+  }
+  // TROIS ISSUES ET NON DEUX, et la troisième ne s'écrit jamais comme un silence.
+  //
+  //   `_reg` posée à la validation, ou archive complète → `_exact` vrai : on REND la
+  //   configuration par la fonction du produit et on lit l'unité qu'elle produit
+  //   réellement. C'est un RÉSULTAT (règle 1) : on ne demande pas « la photo porte-t-elle
+  //   un `utXxx` à W1 ? » — ce serait réécrire ici la table des couples drapeau/unité,
+  //   et elle grandit d'un cran à chaque filtre ajouté.
+  //
+  //   ni l'un ni l'autre → « je ne peux pas le dire ». Confondre avec « elle va bien »
+  //   disculperait sans avoir regardé, sur le chemin même qu'on instrumente : c'est
+  //   `cachesDispo`, au même endroit du raisonnement.
+  //
+  // Rend `null` quand il n'y a RIEN à dire — ligne mesurée depuis le correctif, ou
+  // configuration lue et sans unité `W1`. Marquer une ligne juste serait un faux refus
+  // sur le cas normal (règle 16), et c'est le cas courant de tout le monde.
+  w1Perimee(v) {
+    if (!v) return null;
+    if (!this.versionAvant(v._va, this.SEUIL_W1)) return null;
+    let e = null;
+    try { e = this.etatDeLigne(v); } catch (err) { e = null; }
+    if (!e || !e._exact) return { etat: 'inconnu', filtres: [] };
+    let cfg = null;
+    try {
+      cfg = this.cfgCourante(v.ticker || v.sym, v.periode, v.sl, v.rr, e,
+        { entree: v.entree, ligne: v.ligne });
+    } catch (err) { cfg = null; }
+    if (!cfg) return { etat: 'inconnu', filtres: [] };
+    const w1 = (cfg.filtres || [])
+      .filter((f) => String(f.ut || '').toUpperCase() === 'W1');
+    return w1.length ? { etat: 'porte', filtres: w1.map((f) => f.type) } : null;
+  }
   fenPlate(fen) { return { m: fen.mode, d: fen.debut, f: fen.fin }; }
   // La fenêtre d'une LIGNE. Les scans faits avant cette version n'en portent pas : ils
   // sont réputés « tout l'historique », et rien de ce qu'ils affichent ne change.
@@ -16276,7 +16344,8 @@ GROUPES = {
         // La règle du moteur qui a produit ces chiffres voyage avec la ligne : sans elle,
         // un robot exporté depuis le tableau s'annonçait « mesure antérieure à la règle
         // actuelle » alors qu'elle venait d'être calculée.
-        for (const r of out) if (!r._sid) { r._sid = this._sid; r._sdate = this._sdate; r._mv = this.MOTEUR_V; }
+        for (const r of out) if (!r._sid) { r._sid = this._sid; r._sdate = this._sdate;
+          Object.assign(r, this.marqueMesure()); }
         // archive provisoire : le scan en cours existe dans « Scans en mémoire » dès
         // le premier jet, et la publication finale la MET À JOUR au lieu d'en créer une seconde.
         // Elle est construite en LOCAL puis passée explicitement : la relire depuis le state
@@ -16338,7 +16407,7 @@ GROUPES = {
     // marque de ce scan : elle voyage avec chaque ligne, pour distinguer le scan
     // en cours (le TOP) de l'historique complet (le tableau du dessous).
     const sid = this._sid || Date.now(), sdate = this._sdate || new Date().toISOString();
-    for (const r of out) { r._sid = sid; r._sdate = sdate; r._mv = this.MOTEUR_V;
+    for (const r of out) { r._sid = sid; r._sdate = sdate; Object.assign(r, this.marqueMesure());
       if (partiels.has(r.sym)) r.partiel = true; }
     const courant = [...out].sort((a, b) => b.total - a.total);
     const cumul = new Map();
@@ -17230,7 +17299,7 @@ GROUPES = {
           const suite = this.normValides(this.state.valides).map((x) => (this.cleValide(x) !== cle ? x
             : { ...x, n: r.n, total: r.total, rAn: r.rAn, winRate: r.winRate, pf: r.pf, dd: r.dd,
                 positifs: seg ? seg.positifs : x.positifs, segTotal: seg ? seg.total : x.segTotal,
-                _mv: this.MOTEUR_V, _remesure: new Date().toISOString() }));
+                ...this.marqueMesure(), _remesure: new Date().toISOString() }));
           this.setState({ valides: suite },
             () => this.ecrirePf(this.state.pfs, this.state.favoris, suite));
           faites++;
@@ -17491,7 +17560,21 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260920.6';
+  VERSION_APP = '260920.7';
+  // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
+  //
+  // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
+  // calculés ; `_va` sous quelle VERSION de l'application. La seconde manquait, et sans
+  // elle un défaut de moteur refermé ne se date pas : une ligne portant le réglage que
+  // le correctif touche est indistinguable d'une ligne mesurée depuis.
+  //
+  // UNE SOURCE POUR TROIS SITES D'ESTAMPILLE. Trois copies d'un même objet divergent à
+  // la première qu'on oublie — c'est la classe de `REFUS_ROBOT`, quatre surfaces
+  // corrigées sur cinq, et elle ne se referme pas en corrigeant mieux.
+  //
+  // L'ABSENCE de `_va` est une information, et c'est la bonne : toute ligne mesurée
+  // avant cette version n'en porte pas, par construction. Rien à migrer, rien à deviner.
+  marqueMesure() { return { _mv: this.MOTEUR_V, _va: this.VERSION_APP }; }
   signature(cfg) { return this.MOTEUR_V + '|' + this.state.btSym + '|' + this.state.ut + '|' + JSON.stringify(cfg); }
   // tout réglage relance le test : impossible de lire un chiffre qui ne correspond pas à l'écran.
   // Mais un backtest complet par frappe fige l'interface : on regroupe les
@@ -27493,6 +27576,43 @@ GROUPES = {
             ? 'stop ' + fr(v.sl, 1) + ' % · R/R ' + fr(v.rr, 1) + ' · ' + this.secuTexte(v)
             : 'revalidez-le depuis l\u2019historique',
           filtres: v.filtres || 'filtres inconnus',
+          // ————— L'ANCIEN REPLI DE `W1` SUR `H4` SE DIT SUR LA RANGÉE —————
+          //
+          // Une infobulle ne s'ouvre pas toute seule : ce qui doit changer une décision
+          // vit dans le texte RENDU. Trois issues, et la troisième dit « je ne peux pas
+          // le dire » plutôt que de se taire — « elle va bien » serait une disculpation
+          // sans mesure, sur le chemin même qu'on instrumente.
+          //
+          // IL SE CALCULE ICI, SUR `v`, ET C'EST LA GARDE QUI L'A DIT. Posé d'abord sur
+          // la rangée du portefeuille, il lisait l'objet MAPPÉ — qui n'emporte ni `_reg`
+          // ni `_va`, puisque cette projection énumère ses champs. Le prédicat rendait
+          // « porte » et l'écran rendait « je ne peux pas le dire » : un producteur juste
+          // dont la valeur ne rejoint jamais son trou, la règle 11 exactement.
+          ...(() => {
+            const w = this.w1Perimee(v);
+            if (!w) return { aW1: false, w1Txt: '', w1Encre: '', w1Aide: '' };
+            const porte = w.etat === 'porte';
+            return {
+              aW1: true,
+              w1Txt: porte
+                ? 'unité W1 mesurée avant le correctif — ce chiffre vient du repli sur H4 ('
+                  + w.filtres.join(', ') + ') · à remesurer'
+                : 'unité de filtre non relisible — je ne peux pas dire si ce chiffre vient '
+                  + 'du repli de W1 sur H4',
+              w1Encre: porte ? 'var(--color-accent-900)' : 'var(--color-neutral-600)',
+              w1Aide: porte
+                ? 'Jusqu\u2019à la version 260920.5, le moteur faisait tomber toute unité '
+                  + 'qu\u2019il ne connaissait pas dans le seau de 4 h : une unité W1 était '
+                  + 'mesurée en H4, sous une étiquette qui dit « semaine ». Le robot exporté '
+                  + 'depuis cette ligne, lui, fait de vraies semaines — l\u2019écart est '
+                  + 'mesuré à 13 270 bougies sur la première série d\u2019exemple. Le geste '
+                  + 'est « Remesurer les lignes », dans Mes décisions.'
+                : 'La configuration exacte de cette ligne ne se relit pas : ni sa photo de '
+                  + 'réglages ni son archive de scan ne sont là. Elle a été mesurée avant la '
+                  + 'version 260920.5, donc la question se pose — et annoncer qu\u2019elle va '
+                  + 'bien serait une disculpation sans mesure. Remesurez-la pour lever le doute.',
+            };
+          })(),
           filtresAucun: v.filtres === 'Aucun filtre' || !v.filtres,
           // LA FENÊTRE, JUSQUE DANS LE PORTEFEUILLE. Une ligne validée porte sa photo de
           // fenêtre (`fen`), donc l'étiquette reste juste même si le scan d'origine a été
