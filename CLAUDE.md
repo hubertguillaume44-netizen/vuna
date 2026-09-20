@@ -5753,7 +5753,8 @@ est plus que la raison.
 
 ## L'unité d'un filtre est INERTE dans le moteur et VIVANTE dans le robot
 
-**STATUT · DÉFAUT MESURÉ DANS LE DÉPÔT, NON CORRIGÉ — RELEVÉ, NON FERMÉ.** Rien n'est
+**STATUT · DEUX DÉFAUTS, ET ILS ONT ÉTÉ SÉPARÉS. `W1` replié sur `H4` est CORRIGÉ et
+MESURÉ ; la série de décision donnée aux filtres est RELEVÉE, NON FERMÉE.** Rien n'est
 changé ici : la mesure est consignée pour que la correction se décide sur des chiffres.
 Elle est née d'une lecture de l'utilisateur sur `backtesterSuivi`, et elle déborde le lot
 qui l'a fait trouver.
@@ -5806,3 +5807,189 @@ laisserait le moteur annoncer une unité qu'il n'applique pas. Il y en a deux, e
 s'excluent — le moteur ré-échantillonne depuis la H1 brute, ou l'interface cesse
 d'offrir une unité par filtre. La première rend vrai ce qui est écrit ; la seconde rend
 écrit ce qui est vrai. *Aucune des deux n'entre dans le lot qui a trouvé le défaut.*
+
+### Les deux défauts ont été rangés sous une entrée, et ils ne sont pas de la même nature
+
+Le relevé ci-dessus en tenait **deux**, avec deux sorties qui s'excluent — donc il en
+décrivait un seul et en cachait un autre. C'est l'utilisateur qui les a séparés, et la
+séparation décide de ce qui se répare aujourd'hui.
+
+| | ce que c'est | ce que ça demande |
+|---|---|---|
+| **A · `W1` replié sur `H4`** | un **cas non écrit** : `resamplerBrut` testait `H1`, puis `D1`, et faisait tomber tout le reste dans le seau de 4 h | dix lignes, une garde, une mutation — rien à décider |
+| **B · les filtres reçoivent la série de DÉCISION** | une **conception** : `autorisePar(sup, …)` leur donne une série qui a déjà perdu son détail | savoir ce que l'interface doit promettre — pas un lot de correction |
+
+**A est corrigé.** Le seau est celui du robot à l'arithmétique près — `t / sec` sur
+l'horloge brute —, donc une semaine y court du jeudi au mercredi, l'époque Unix étant un
+jeudi.
+
+**ET LA RAISON QUI ACCOMPAGNAIT CE SEAU ÉTAIT FAUSSE, ce qui est plus grave que le seau.**
+Elle disait *« c'est la semaine que MT5 découpe »*. Le robot ne demande jamais sa semaine
+à MT5 : `PERIOD_W1` natif commence le DIMANCHE, et le robot ne l'appelle pas — il agrège
+lui-même depuis les H1. Le jeudi sort de l'arithmétique de `SeauDe`, pas d'un découpage
+de MT5.
+
+> **Une justification fausse est plus dangereuse quand la décision est juste**, parce que
+> rien ne la contredit. Un lecteur qui aurait cru celle-là, puis découvert le dimanche,
+> aurait « réparé » l'écart que ce seau vient de fermer — et il aurait eu raison contre
+> une phrase, tort contre le robot.
+
+Un fait plausible à la place d'un fait disponible, écrit dans le commentaire d'un
+correctif mesuré. Ce qui tient l'alignement est la COMPARAISON AU ROBOT, jamais une
+propriété de MT5.
+
+**Et c'est la garde du port qui l'a chiffré**, ce qui était la seconde moitié de la
+remarque : `utResist: 'W1'` sous une décision H1 la fait rougir sur **13 270 bougies pour
+vx-eur seul**, les dix familles sans exception. Le relevé cessait d'être un relevé dès
+qu'on lui donnait la bonne fixture.
+
+> **Une dérivation exercée sur un seul point ne découvre rien de plus qu'une constante.**
+> La garde du port extrayait bien ses paramètres du texte émis — mais elle ne jouait que
+> `86400`, c'est-à-dire la seule unité dont on venait de mesurer qu'elle est en accord
+> des deux côtés. Une prise vérifiée sur une population choisie, dans la garde écrite
+> contre ce défaut-là.
+
+`scripts/mt5/unites-agregees.test.mjs` tient la CLASSE et non le cas : les unités sont
+découvertes dans la table `SECONDES` du robot, chacune doit rendre une série **distincte**
+dans le moteur, et son grain doit suivre sa durée — deux unités qui coïncident par hasard
+sur un compte ne coïncident pas sur un rapport. Une cinquième unité ajoutée au robot sans
+seau correspondant la fait tomber sans être nommée ici. Éprouvée par deux mutations :
+l'état d'avant, et l'unité orpheline.
+
+**`MOTEUR_V` NE TOURNE PAS PARCE QUE LA POPULATION EST VIDE — pas parce qu'elle serait
+minoritaire.** L'arbitrage avait d'abord été posé à deux termes : tourner la clé (périmer
+tout le monde) ou ne pas la tourner (ne périmer personne). *Les deux traitaient une
+population entière au nom d'un sous-ensemble*, ce qui est exactement le défaut que ce
+fichier reproche ailleurs.
+
+**Le troisième terme est de périmer les LIGNES qui portent le défaut**, et c'est
+l'utilisateur qui l'a nommé. Ce qui tranche n'est donc pas un jugement mais un fait qu'il
+a mesuré sur ses données : **aucune ligne validée ne porte de filtre `W1`.** La clé ne
+tourne pas parce qu'il n'y a rien à périmer.
+
+> **« Minoritaire » est un jugement qui se périme en silence ; « vide » est une mesure
+> datée qui cesse d'être vraie visiblement.** Les deux menaient à la même décision ce
+> jour-là, et elles divergent au premier client.
+
+**ET LE PRÉDICAT CIBLÉ EST ÉCRIVABLE — mesuré pour que la dette soit connue AVANT de
+servir.** Une ligne enregistrée porte ses filtres : `REGLAGES` contient les drapeaux
+(`fRsi`, `fAdx`, `fNuage`, `fMa`, `fPente`, `fPivot`, `fResist`, `fZone`) ET les unités
+(`utMtf`, `utRsi`, `utAdx`, `utNuage`, `utMa`, `utPente`, `utPivot`, `utResist`,
+`utZone`), et `snapshotReglages` copie toute clé de `REGLAGES` présente dans l'état. Le
+prédicat s'écrit `_reg.fResist && _reg.utResist === 'W1'`, sans rien ajouter au format.
+
+**Et le troisième ÉTAT a déjà un nom dans le code**, ce qui était la moitié manquante :
+`snapshotReglages` n'est appelé que sous `e._exact` — une photo n'est posée que quand elle
+est fidèle. Une ligne sans `_reg` et sans archive complète ne peut rien dire d'elle-même,
+et `_exact` le porte déjà. *Le jour où le prédicat servira, il aura trois issues et non
+deux : porte le défaut, ne le porte pas, et « je ne peux pas le dire » — qui ne s'écrit
+jamais comme un silence.*
+
+> **Un défaut de moteur découvert après le lancement ne laisse pas le choix entre tout
+> périmer et mentir — à condition que la contrainte ait été mesurée avant d'en avoir
+> besoin.** Elle l'est, elle ne coûte rien aujourd'hui, et c'était le seul moment où on
+> pouvait la mesurer sans urgence.
+
+**ET LE PRÉDICAT N'EST PAS ÉCRIT POUR LE BON MOTIF — la distinction a été relevée par
+l'utilisateur et elle vieillit mieux.** Le premier refus disait « une garde sur une
+population vide compterait zéro ». C'est vrai du TEST, et le test n'a effectivement pas à
+être écrit. Ça ne l'est pas du PRÉDICAT : ce serait du comportement produit, dormant et
+correct — cinq lignes qui ne s'exécutent jamais tant que personne n'a de ligne `W1`, et
+qui sont justes le jour où quelqu'un en a une.
+
+> **« Le test compterait zéro » et « le prédicat serait inutile » se ressemblent et ne
+> vieillissent pas pareil.** Le premier reste vrai tant que la population est vide ; le
+> second devient faux au premier client, sans que rien ne le signale. *Un refus se
+> justifie par ce qui cessera d'être vrai en même temps que lui.*
+
+**LA DETTE VIT DONC AUSSI DANS `PASSATION.md`, et c'est là qu'elle sert.** Son
+déclencheur — le premier client qui enregistre une ligne `W1` — est un événement du
+MONDE, qu'aucune garde du dépôt ne peut constater ; et ce fichier-ci pèse 362 332 octets.
+*Une dette rangée dans un registre que personne ne relit au bon moment n'est pas une
+dette, c'est une trace.* Elle y est écrite par son DÉCLENCHEUR — « au premier client » —
+et non par son sujet, pour être trouvée par quelqu'un qui ne cherchait pas `W1`.
+
+**B reste ouvert, et il n'est pas à décider seul.** Les deux sorties s'excluent : le
+moteur ré-échantillonne depuis la H1 brute — rendre vrai ce qui est écrit — ou
+l'interface cesse d'offrir une unité par filtre — rendre écrit ce qui est vrai.
+
+### Et j'ai relu un artefact BASE64 au grep, puis rapporté une absence
+
+`grep PlafondResist Vuna.solo.html` rend **0**, et j'en ai conclu que le générateur était
+chargé depuis un fichier voisin — donc qu'un utilisateur hors ligne ne pouvait pas
+exporter le robot livré. **C'était faux.** `solo.mjs` encode `robot-mt5.js` en base64 et
+le sert par une Blob URL ; décodé, le bloc de 186 188 caractères porte `PlafondResist`
+trois fois. L'artefact se suffit, l'export hors ligne marche, le port est atteignable.
+
+> **C'est la règle de la greppabilité, commise par son auteur, sur l'artefact qu'elle
+> protège.** J'avais écrit la veille qu'une garde vérifie ce qui est ÉMIS et une personne
+> ce qui est ÉCRIT — puis j'ai lu de l'écrit encodé et rapporté ce que l'œil ne voyait
+> pas. *Un grep qui ne trouve rien ressemble à un grep qui trouve zéro*, et cette
+> phrase-là était déjà dans le fichier.
+
+Le geste est celui du chapitre parent, appliqué à soi : **avant de rapporter une absence,
+demander sous quelle forme la chose serait présente.** Un artefact n'est pas un source, et
+ce dépôt en produit trois — le solo, `dist/app/index.html`, et le `.ex5` que l'utilisateur
+compile.
+
+### Une mutation qui se défait par une chaîne VIDE ne se défait pas
+
+Le harnais de mutation de cette séance a **supprimé le correctif de `W1` et ne l'a pas
+restauré** : l'échange aller passait une chaîne vide en remplacement, et l'échange inverse
+comptait alors les occurrences de `""` — 146 025 sur `moteur.js`, donc un refus, donc
+aucune restauration. Le fichier est resté amputé.
+
+> **La règle 13 dit qu'une mutation se défait par le mécanisme qui l'a faite. Elle ne dit
+> pas que ce mécanisme sait le faire.** Un échange dont l'un des deux côtés est vide n'est
+> pas réversible par comptage : la chaîne vide est partout, donc son compte ne vaut rien.
+
+Ce qui l'a attrapé n'est pas le harnais — il avait signalé son refus, et le refus portait
+sur la RESTAURATION, pas sur l'aller. C'est d'avoir relu le fichier avant de conclure.
+*Une mutation se vérifie sur le disque, comme une affirmation* : la règle 5 s'applique à
+son propre outillage. La forme sûre est celle que ce fichier prescrivait déjà — un
+échange marqué, jamais une suppression.
+
+### Un mécanisme de remplacement rend un compte de SUCCÈS — et ça se vérifie sur le fichier
+
+Deux incidents en deux livraisons, et c'est le même énoncé lu dans deux directions :
+
+| l'incident | ce que l'outil a rapporté | ce qu'il n'a pas rapporté |
+|---|---|---|
+| quatre surfaces annoncées pour **cinq** | quatre remplacements faits | la surface qu'il n'a pas **trouvée** |
+| le correctif `W1` **supprimé et non restauré** | un refus sur la restauration | que l'aller, lui, avait **écrit** |
+
+> **Un compte de succès ne mesure ni les absences ni les demi-opérations.** Une
+> substitution rapporte ce qu'elle a touché ; ce qui manque n'a pas de ligne dans son
+> compte rendu, et une opération défaite à moitié y ressemble à une opération refusée.
+
+**Le complément de la règle 13 est donc celui-ci** : une mutation se défait par le
+mécanisme qui l'a faite — *et l'état se vérifie sur le FICHIER, jamais sur le compte rendu
+de l'outil.* C'est ce qui a rattrapé le second incident, et ça mérite d'être la règle
+plutôt que le réflexe : la règle 5 s'applique à son propre outillage.
+
+**Le cas mécanique, pour qu'il ne se reproduise pas** : un échange dont l'un des deux
+côtés est la chaîne VIDE n'est pas réversible par comptage — la chaîne vide est partout,
+donc son compte ne vaut rien (146 025 sur `moteur.js`). La forme sûre est celle que ce
+fichier prescrivait déjà : un échange **marqué**, jamais une suppression.
+
+### Chercher une chaîne dans une représentation qui ne la contient pas
+
+**PROVENANCE · commise des DEUX CÔTÉS, à deux jours d'écart, chacun sur le terrain de
+l'autre.** L'utilisateur a grepé un artefact dont les octets étaient **échappés** et
+conclu qu'une phrase manquait ; j'ai grepé un artefact dont un bloc était en **base64** et
+conclu que le générateur était absent — donc qu'un utilisateur hors ligne ne pouvait pas
+exporter le robot livré. Les deux absences étaient fausses.
+
+> **Une vérification qui ne trouve rien doit prouver qu'elle regardait au bon endroit.**
+> Un grep qui rend zéro et un grep qui ne peut pas voir rendent le même chiffre — et
+> c'est celui qui rassure.
+
+Le patron existe déjà dans le dépôt et il se transporte tel quel : la garde de la marque
+exige d'avoir VU la marque neuve avant de conclure à l'absence de l'ancienne ; celle des
+libellés exige de voir la formule neuve ; celle des unités exige quatre unités découvertes.
+*Une prise avant le verdict, du côté de la garde comme du côté du rapport.*
+
+**Le geste, pour un rapport** : avant de rapporter une absence, demander **sous quelle
+forme la chose serait présente**. Ce dépôt produit trois artefacts qui ne sont pas des
+sources — le solo (base64 pour les modules), `dist/app/index.html`, et le `.ex5` que
+l'utilisateur compile. Aucun des trois ne se lit au grep comme du code.

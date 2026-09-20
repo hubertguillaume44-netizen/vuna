@@ -131,7 +131,7 @@ function masqueRobot(df, par, decalage = 0, gardeBrute = false) {
 }
 
 const CAS = [{ ut: "D1", lookback: 20, marge_pct: 1 }, { ut: "D1", lookback: 50, marge_pct: 2 },
-  { ut: "H4", lookback: 10, marge_pct: 0.5 }];
+  { ut: "H4", lookback: 10, marge_pct: 0.5 }, { ut: "W1", lookback: 8, marge_pct: 1 }];
 
 // ————— LES PARAMÈTRES VIENNENT DU TEXTE ÉMIS, PAS DE LA CONFIGURATION —————
 // Sans ça, la simulation et le générateur liraient tous deux `cfg` et s'accorderaient

@@ -693,7 +693,30 @@ export function resampler(df, ut) {
 }
 function resamplerBrut(df, ut) {
   if (ut === 'H1') return df; // les données de base SONT en H1 : rien à reconstruire
+  // ————— W1 MANQUAIT, ET IL TOMBAIT EN H4 SANS UN MOT —————
+    // Le test ne connaissait que `D1` ; tout le reste retombait sur le seau de 4 h. Or
+    // l'interface OFFRE W1 (la liste `['H1', 'H4', 'D1', 'W1']`, et le choix de référence
+    // du pivot), et le robot le fait vraiment : `SECONDES = { …, W1: 604800 }`. Mesuré
+    // avant correction, sur la garde du port de « sous résistance » : 13 270 bougies
+    // divergent sur vx-eur seul, et les dix familles sans exception.
+    //
+    // Ce n'était pas un choix, c'était un cas non écrit — le moteur annonçait une unité
+    // qu'il n'appliquait pas, et le robot exporté avait raison contre lui.
+    //
+    // LE SEAU EST CELUI DU ROBOT, À L'ARITHMÉTIQUE PRÈS : `SeauDe(t, sec) = t / sec` sur
+    // l'horloge brute. Une semaine y court donc du jeudi au mercredi, parce que l'époque
+    // Unix tombe un jeudi.
+    //
+    // CE JEUDI SORT DE L'ARITHMÉTIQUE, PAS DE MT5, et la nuance n'est pas académique :
+    // `PERIOD_W1` natif commence le DIMANCHE, et le robot ne l'appelle jamais — il agrège
+    // lui-même depuis les H1. Une première version de cette note disait « c'est la semaine
+    // que MT5 découpe » : un lecteur qui l'aurait crue, puis qui aurait découvert le
+    // dimanche, aurait « réparé » l'écart que ce seau vient de fermer.
+    //
+    // Ce qui tient cet alignement est donc la COMPARAISON AU ROBOT — `unites-agregees` et
+    // la garde du port de « sous résistance » —, jamais une propriété de MT5.
   const bucket = (ms) => {
+    if (ut === 'W1') return Math.floor(ms / 604800000) * 604800000;
     const d = new Date(ms);
     if (ut === 'D1') return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     const h = Math.floor(d.getUTCHours() / 4) * 4;
