@@ -12,7 +12,7 @@
 //   | Mes scans › Historique         | oui                 | 0                         |
 //
 // Les trois refus de `exporterRobot` — générateur inchargeable, filtre sans
-// équivalent MQL5, générateur qui jette — PARLENT tous les trois : ils posent
+// pas encore transposé, générateur qui jette — PARLENT tous les trois : ils posent
 // `hasardMsg`. Cette phrase n'avait de surface que sous `vueHistorique`, et les
 // trois boutons qui la déclenchent vivent sous `vuePortefeuille`. Le geste
 // répondait dans une pièce vide.

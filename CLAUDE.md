@@ -2465,6 +2465,7 @@ phrase sur un ensemble :
 | la phrase réécrite de mémoire au lieu d'être cherchée | la même | « La colonne gratuite » |
 | **le nom du dépôt, pris dans l'inventaire du brief** | `git ls-remote --get-url origin` | « Fichiers », plus haut |
 | **un REMÈDE attribué de mémoire** — `grep -v $$` pour la sonde qui se mesurait elle-même | `grep` sur la trace de séance : la chaîne n'y paraît que dans le message qui l'affirme | « Ce que je mesure contient-il ma mesure ? » |
+| **une ABSENCE conclue d'un `grep` à population choisie** — « `mirroirVente` n'existe pas dans le dépôt » | le même `grep`, sur `git ls-files` : la fonction vit dans `scripts/mt5/config.mjs` | ci-dessous, « le refus lisait la case » |
 
 **ET LE DERNIER MEMBRE ÉLARGIT LA CLASSE UNE FOIS DE PLUS : ce n'est ni un nombre, ni un
 nom, c'est un MÉCANISME.** Tous les autres remplaçaient une valeur qu'une commande rend —
@@ -5333,3 +5334,133 @@ rendue : elle tombe alors en citant les quatre écrans et le texte lu.
 texte qui n'apparaît que sous une condition — un dialogue, un état d'erreur, une
 notification — lui échappe, et c'est exactement ce que la première mutation a démontré.
 C'est une garde du cas courant, pas de la surface entière.
+
+## Une consigne qui NOMME la bonne propriété ne prouve pas que le code la lit
+
+**STATUT · CAUSE ÉTABLIE — faux refus RAPPORTÉ (hypothèse d'un brief utilisateur,
+déclarée non mesurée par lui), cause et correctif MESURÉS DANS LE DÉPÔT, en appelant les
+deux fonctions.**
+
+Le refus d'export du robot portait, au-dessus de lui, exactement la bonne doctrine :
+
+> *« LA CONDITION EST UN RÉSULTAT (règle 1). On ne demande pas « la ligne porte-t-elle un
+> filtre réputé inexportable ? » — ce serait réécrire ici la liste du générateur. On
+> appelle la fonction QUI REFUSE, sur l'état résolu de la ligne : le bouton et le refus
+> ne peuvent pas diverger, puisqu'ils lisent le même verdict. »*
+
+**Deux affirmations, et une seule est vraie.** Le bouton et le refus ne divergent
+effectivement pas — les deux appellent `filtresBloquants(etatDeLigne(v))`, c'est mesuré
+et c'est une vraie propriété. Mais « l'état résolu de la ligne » ne l'est pas :
+`etatDeLigne` rend la PHOTO DES RÉGLAGES, c'est-à-dire la case cochée. L'état résolu est
+ce que `cfgCourante` construit — et `cfgCourante` pousse deux filtres sous `&& !vente`.
+
+Mesuré, en découvrant le jeu depuis la source de `cfgCourante` puis en appelant le refus :
+
+| | achat | vente |
+|---|---|---|
+| `fResist` — « Sous résistance » | refusé | **refusé** |
+| `fZone` — « Hors zone de résistance » | refusé | **refusé** |
+
+À la vente, la mesure ne porte aucun de ces deux filtres : le robot n'a rien à
+reproduire, et il refusait quand même. **Un faux refus sur le cas normal — règle 16 —,
+sous la pire de ses deux formes** : il n'y a pas d'interrupteur à désarmer, il y a un
+geste retiré sans recours, sur une ligne parfaitement exportable.
+
+> **Une consigne écrite dans le vocabulaire d'une règle a l'autorité de cette règle.** Et
+> c'est pire qu'une consigne périmée : celle-ci n'a jamais été vraie, et elle DÉCRIT le
+> défaut en le certifiant absent. « C'est un résultat, pas une intention » est la phrase
+> exacte qu'il fallait pour disculper ce que la règle 1 interdit.
+
+**Et elle a produit son effet ici, dans cette séance.** Ayant lu le commentaire avant le
+code, j'ai écrit que l'hypothèse du brief « semblait réfutée ». C'est la famille déjà
+nommée : *ce qui coûte, c'est ce qui arrête de chercher* — et une doctrine juste, citée
+au bon endroit, a la forme la plus achevée d'une réponse.
+
+Le geste est celui du chiffre sans sa commande, appliqué à une affirmation sur le code :
+**une consigne qui affirme une propriété se fait échouer une fois.** Ici, un script de
+dix lignes — la source de `cfgCourante` d'un côté, `filtresBloquants` appelé de l'autre.
+
+### Le brief avait raison sur la CONCLUSION et se trompait de route — et c'est la route qui protégeait le défaut
+
+Il disait : *« le refus d'export lit la case cochée dans l'interface, pas la
+configuration résolue »*. La conclusion est confirmée ; la route, non. Rien ne lit
+l'interface : le refus lit le même état que tout le reste, et c'est cet état qui PORTE la
+case.
+
+**C'est précisément ce qui l'a gardé en vie.** Un refus qui serait allé chercher une case
+dans le DOM aurait sauté aux yeux du premier relecteur. Celui-ci passait par la fonction
+canonique, sur l'objet canonique, sous un commentaire qui nommait la bonne propriété —
+trois signaux de justesse pour une valeur qui ne l'était pas.
+
+> **Un défaut qui emprunte le chemin recommandé ne se voit pas sur le chemin.** Il se voit
+> en demandant ce que l'objet transporté CONTIENT — et ce nom-là, « état résolu », promet
+> qu'il n'y a rien à demander.
+
+### Et la prise qui ne compte que « pas zéro » se laisse RÉTRÉCIR
+
+La garde écrite pour fermer ça découvre son jeu de filtres depuis la source de
+`cfgCourante`, sur ce qui AGIT — un `filtres.push` gaté par `&& !vente`. Sa prise, au
+premier jet, était celle que ce fichier prescrit partout : *zéro filtre découvert n'est
+pas « rien à vérifier », c'est une découverte désancrée.*
+
+**Elle est restée VERTE sous la mutation qui déplace un des deux gâteaux** en
+`!vente && s.fResist`. Le motif perdait `fResist`, trouvait encore `fZone`, et les trois
+assertions suivantes passaient sur la moitié d'une population — sans un mot.
+
+> **Un désancrage PARTIEL est invisible à une prise qui compte zéro.** « Pas vide » n'est
+> pas « complet », et une découverte peut perdre un membre sans jamais atteindre le seul
+> état que sa prise sait reconnaître.
+
+La sortie n'est pas un seuil — on ne sait pas combien de filtres DEVRAIENT être gatés.
+C'est la **confrontation de deux sources indépendantes** : le jeu lu dans `cfgCourante`
+et le jeu déclaré dans `robot-mt5.js` doivent être égaux, et l'assertion échoue **dans
+les deux sens** — un filtre gaté que le générateur ne déclare pas, un filtre déclaré qui
+n'est plus gaté, ou un motif qui en perd un en route. Sous la même mutation, elle tombe
+en écrivant *« la mesure retire [fZone] ; le générateur déclare [fResist, fZone] »*.
+
+**C'est « relire la liste CONTRE le total », dans une garde au lieu d'une prose** — et
+c'est ce qui prouve que cet énoncé-là n'était pas une règle d'écriture. Un total seul se
+recopie, une liste seule rassure ; ici, une découverte seule se laisse rétrécir. Dans les
+trois cas, la mesure est dans la confrontation, jamais dans l'une des deux moitiés.
+
+**Aucune des deux sources ne dérive de l'autre** — l'une est analysée dans
+`Vuna.dc.html`, l'autre déclarée dans `robot-mt5.js` —, donc ce n'est pas la prise
+circulaire du chapitre voisin : c'est la forme de `meme-horloge`, où le défaut n'est dans
+aucun maillon pris seul.
+
+**Son angle mort est en tête** : elle tient l'accord sur le sens tel que `cfgCourante` le
+lit, `etat.btSens`. Elle ne prouve pas que `cfg.sens` — dont `genererMQ5` tire son propre
+`vente` pour ÉCRIRE le code — vaut toujours la même chose. Les deux descendent du sens de
+la ligne et ne peuvent diverger qu'en amont des deux fonctions mesurées ; c'est une
+propriété de l'application, antérieure à ce correctif et non touchée par lui. **Relevé,
+non fermé.**
+
+### Et l'écran affirmait une impossibilité là où la source constate un chantier
+
+Le commentaire au-dessus de la table `INCONNUS` dit, noir sur blanc, qu'aucun des quatre
+filtres n'est intransposable : le robot garde déjà les hauts de ses seaux, et « sous
+résistance » y coûte une dizaine de lignes. *« C'est un chantier, pas une fatalité. »*
+
+Les libellés disaient l'inverse — « n'a pas d'équivalent MQL5 fidèle ». Quatre surfaces
+portaient la formule, et les voici, relues contre le compte : le message de
+`exporterRobotBrut`, celui du lot `exporterRobots`, l'infobulle du bouton (`robAide`), et
+l'erreur que jette le générateur. **Ce que ça change n'est pas cosmétique** : une
+impossibilité fait renoncer au filtre, un chantier laisse le choix d'attendre — et c'est
+le seul arbitrage que le lecteur ait à faire.
+
+La garde s'ancre sur l'**ABSENCE** (règle 14, troisième issue) : son sujet a disparu, et
+elle attrape la réintroduction, qui est le risque réel puisque la formule est courte et
+évidente. Elle lit les CHAÎNES émises, jamais la prose : **un** commentaire du produit
+raconte encore l'ancien libellé — celui qui critiquait déjà la généralité du message de
+lot — et il a le droit de le citer (règle 3).
+
+*(« Trois commentaires » était écrit ici, sans avoir été compté. La commande rend un,
+plus les deux occurrences de la garde elle-même — sa tête et son message. Et le premier
+compte a été pris sur `git ls-files`, qui ne voit pas un fichier neuf non suivi : la
+garde manquait à sa propre population. Deux fois la même famille dans un paragraphe qui
+la décrit.)*
+
+**Elle n'a pas besoin de s'exclure nommément**, contrairement aux deux gardes qui le
+font : elle ne lit que `Vuna.dc.html` et `robot-mt5.js`, donc l'interdit qu'elle épelle
+ne vit pas dans sa population. *Ce que je mesure ne contient pas ma mesure* — pas par
+exception, par construction.

@@ -64,6 +64,37 @@ const INCONNUS = {
 };
 const REGLAGES_BLOQUANTS = { btDelai: 'Délai d\u2019entrée' };
 
+// ————— ET DEUX DE CES QUATRE NE SONT PAS DANS LA MESURE D'UNE VENTE —————
+//
+// `cfgCourante` les pousse sous `&& !vente` : à la vente, « sous résistance » et « hors
+// zone de résistance » n'ont pas de symétrique utile — vendre à découvert « sous un
+// plafond » ne veut rien dire —, donc la MESURE ne les porte pas. Le robot n'a alors
+// rien à reproduire, et le refus n'avait pas d'objet.
+//
+// Il refusait quand même. Mesuré, en découvrant le jeu depuis la source de
+// `cfgCourante` puis en appelant cette fonction-ci :
+//
+//     fResist  achat -> [Sous résistance]        vente -> [Sous résistance]
+//     fZone    achat -> [Hors zone de résistance] vente -> [Hors zone de résistance]
+//
+// La cause est la règle 1, et le commentaire de `refusExport` la disait déjà sans la
+// voir : il promettait « l'état RÉSOLU de la ligne ». L'état que les deux appels
+// partagent n'est pas résolu — c'est la photo des réglages, donc la case cochée. On
+// demandait « la case est-elle cochée ? » (une intention) pour décider « la mesure
+// porte-t-elle ce filtre ? » (le résultat). Les deux coïncident à l'achat, et divergent
+// exactement là où personne ne regardait.
+//
+// C'est un FAUX REFUS sur le cas normal — règle 16 —, et sa forme est la pire des deux
+// que la règle décrit : il n'y a pas d'interrupteur à désarmer, il y a un geste retiré
+// sans recours. Une ligne vendeuse parfaitement exportable rendait un bouton éteint.
+//
+// LE SENS VIENT DE `etat.btSens`, la même source que `cfgCourante` lit pour décider
+// `vente` : deux sources pour un seul fait finiraient par se contredire. Un état sans
+// sens retombe sur l'achat, donc sur le refus — le côté sûr, parce qu'un geste offert à
+// tort livre un robot qui ne reproduit pas la mesure, quand un geste refusé à tort se
+// voit et se rapporte.
+const SANS_SYMETRIQUE_VENDEUR = { fResist: 1, fZone: 1 };
+
 function nb(v, def) { const x = Number(v); return Number.isFinite(x) ? x : def; }
 function esc(s) { return String(s ?? '').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' '); }
 function secs(u, def) { return SECONDES[String(u || '').toUpperCase()] || def; }
@@ -85,7 +116,10 @@ export function nomRobot(cfg, stamp) {
 }
 
 export function filtresBloquants(etat) {
-  const l = Object.keys(INCONNUS).filter((k) => etat && etat[k]).map((k) => INCONNUS[k]);
+  const vente = !!etat && etat.btSens === 'vente';
+  const l = Object.keys(INCONNUS)
+    .filter((k) => etat && etat[k] && !(vente && SANS_SYMETRIQUE_VENDEUR[k]))
+    .map((k) => INCONNUS[k]);
   for (const k of Object.keys(REGLAGES_BLOQUANTS)) {
     if (etat && Number(etat[k]) > 0) l.push(REGLAGES_BLOQUANTS[k]);
   }
@@ -101,7 +135,7 @@ export function genererMQ5(cfg, ctx = {}) {
   const etat = ctx.etat || {};
   const bloquants = filtresBloquants(etat);
   if (bloquants.length) {
-    throw new Error('Réglage non transposable en MQL5 : ' + bloquants.join(', ')
+    throw new Error('Réglage pas encore transposé en MQL5 : ' + bloquants.join(', ')
       + '. Ce robot ne peut pas reproduire la mesure.');
   }
 
@@ -343,7 +377,7 @@ input ulong  InpMagic           = ${nb(ctx.magic, 20260901)};
 // quelle build l'avait émis. Le stamp d'export ne répond pas à cette question : il dit
 // QUAND on a exporté, pas DE QUOI. La marque est écrite ici dans la forme exacte que
 // « npm run app:version » cherche, donc ce fichier est daté comme les deux autres.
-#define VUNA_VERSION "260919.5"
+#define VUNA_VERSION "260920"
 //--- Configuration mesurée (ne pas modifier : le backtest ne serait plus valable)
 #define STOP_PCT        ${sl}
 #define OBJECTIF_R      ${rr}

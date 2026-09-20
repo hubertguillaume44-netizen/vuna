@@ -2748,7 +2748,7 @@
               </div>
               <!-- ————— LE MESSAGE DE L'EXPORT DE ROBOT VIT OÙ LE GESTE SE FAIT —————
                    `exporterRobot` a trois refus — générateur inchargeable, filtre sans
-                   équivalent MQL5, générateur qui jette — et tous les trois PARLENT :
+                   pas encore transposé, générateur qui jette — et tous les trois PARLENT :
                    ils posent `hasardMsg`. Mesuré : cette phrase n'avait de surface que
                    sous `vueHistorique`, et les trois boutons qui la déclenchent vivent
                    sous `vuePortefeuille`. Le complément exact — lisible là où il n'y a
@@ -8196,7 +8196,7 @@ class Component extends DCLogic {
     const bloquants = mod.filtresBloquants(etat);
     if (bloquants.length) {
       this.setState({ hasardMsg: 'Robot non exporté pour ' + this.nomComplet(v.sym)
-        + ' : ' + bloquants.join(', ') + ' n\u2019a pas d\u2019équivalent MQL5 fidèle. Livrer le robot sans ce réglage donnerait un nombre de trades différent de la mesure.' });
+        + ' : ' + bloquants.join(', ') + ' n\u2019est pas encore transpos\u00e9 en MQL5 \u2014 c\u2019est du code qui manque, pas une impossibilit\u00e9. Livrer le robot sans ce réglage donnerait un nombre de trades différent de la mesure.' });
       return false;
     }
     // « X % sur N tirages » ressemble à une statistique descriptive ; il se LIT comme
@@ -8385,8 +8385,9 @@ class Component extends DCLogic {
     }
     if (refuses.length) {
       this.setState({ hasardMsg: ok + ' robot(s) exporté(s). Refusé(s) : '
-        + refuses.join(' · ') + '. Un réglage entre parenthèses n\u2019a pas '
-        + 'd\u2019équivalent MQL5 fidèle — choisissez pour cet instrument une '
+        + refuses.join(' · ') + '. Un réglage entre parenthèses n\u2019est '
+        + 'pas encore transpos\u00e9 en MQL5 \u2014 du code qui manque, pas une '
+        + 'impossibilit\u00e9. En attendant, choisissez pour cet instrument une '
         + 'configuration qui ne le porte pas. Sans parenthèses, la grille du scan '
         + 'n\u2019est plus en mémoire : le détail est dans le fichier de diagnostic.' });
     }
@@ -17390,7 +17391,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260919.5';
+  VERSION_APP = '260920';
   signature(cfg) { return this.MOTEUR_V + '|' + this.state.btSym + '|' + this.state.ut + '|' + JSON.stringify(cfg); }
   // tout réglage relance le test : impossible de lire un chiffre qui ne correspond pas à l'écran.
   // Mais un backtest complet par frappe fige l'interface : on regroupe les
@@ -27622,9 +27623,10 @@ GROUPES = {
             return { robBloque: !!refus,
               robAide: refus
                 ? 'Robot non exportable pour cette configuration : ' + refus
-                  + ' n\u2019a pas d\u2019équivalent MQL5 fidèle. Livrer le robot sans ce '
+                  + ' n\u2019est pas encore transpos\u00e9 en MQL5 \u2014 c\u2019est du code '
+                  + 'qui manque, pas une impossibilit\u00e9. Livrer le robot sans ce '
                   + 'réglage donnerait un nombre de trades différent de la mesure. '
-                  + 'Choisissez une configuration qui ne porte pas ce filtre.'
+                  + 'En attendant, choisissez une configuration qui ne porte pas ce filtre.'
                 // ————— OÙ LA PROMESSE SE FAIT, ET DONC OÙ LA RÉSERVE VIT —————
                 // Le R par an de la ligne est une mesure sur des prix, et il reste vrai.
                 // Ce qui peut être faux, c'est « un robot réalisera ça chez mon

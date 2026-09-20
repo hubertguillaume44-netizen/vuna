@@ -121,8 +121,8 @@ export const POSER_SEMIS = `(() => {
         + "par instrument, la table ne peut pas en porter deux du même");
       // ————— LE BANC N'EXERÇAIT QUE LE SUCCÈS —————
       // Sept rapports « Exporter ne produit rien » en trois jours, et le départage a
-      // fini par être le FILTRE : « Sous résistance » n'a pas d'équivalent MQL5, le
-      // générateur le refuse. Le semis ne posait que des lignes à filtre ADX — toutes
+      // fini par être le FILTRE : « Sous résistance » n'est pas encore transposé en
+      // MQL5, le générateur le refuse. Le semis ne posait que des lignes à filtre ADX — toutes
       // exportables — donc la tournée cliquait « Exporter » et voyait un fichier
       // descendre, à chaque fois, sur le seul cas qui marche.
       //
@@ -140,7 +140,13 @@ export const POSER_SEMIS = `(() => {
       // gabarit, et le premier en fermerait la chaîne. Le module a déjà été cassé
       // deux fois par là.)
       const valides = S.map((sym, i) => ({ ...ligneDe(sym, i), sens: 'achat', ut: 'H1',
-        ...(i === 0 ? { _reg: { fResist: true, utResist: 'D1', resistLookback: 20, resistMarge: 1 },
+      // ET LE SENS EST DANS LA PHOTO, PAS DANS L'ÉTAT COURANT. etatDeLigne rend
+      // _reg par-dessus this.state : sans btSens dans la photo, le sens de cette ligne
+      // serait celui du réglage courant du banc. Le refus RETIRE désormais
+      // « Sous résistance » à la vente — la mesure ne le porte pas là-bas —, donc une
+      // photo muette sur le sens ferait dépendre la prise du banc d'un défaut d'état.
+      // Le cas VENDEUR, lui, est mesuré sans navigateur par refus-suit-la-mesure.
+        ...(i === 0 ? { _reg: { fResist: true, btSens: 'achat', utResist: 'D1', resistLookback: 20, resistMarge: 1 },
           filtreNom: 'Sous résistance D1 20 (marge 1 %)' } : {}) }));
       // LE VERDICT SE SÈME PAR LA CLÉ DU PRODUIT, jamais par des champs devinés.
       // Première version : des hasP/hasN/hasAu posés sur la ligne — inventés,

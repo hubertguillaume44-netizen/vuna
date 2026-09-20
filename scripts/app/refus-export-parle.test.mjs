@@ -167,8 +167,8 @@ test("chaque sortie en échec de l'export de robot a posé un message avant de p
     + "\n\nUn chemin qui sort sans écrire un mot rend « Exporter ne produit rien » — la "
     + "phrase qu'on ne peut pas déboguer, rapportée sept fois en trois jours. Posez "
     + "`this.setState({ hasardMsg: … })` AVANT de sortir, et que le message nomme la "
-    + "cause : « le filtre X n'a pas d'équivalent MQL5 » se lit, « le robot n'a pas pu "
-    + "être exporté » fait recliquer.");
+    + "cause : « le filtre X n'est pas encore transposé en MQL5 » se lit, « le "
+    + "robot n'a pas pu être exporté » fait recliquer.");
 });
 
 // ————— ET LE REFUS SE SAIT AVANT LE CLIC —————
@@ -235,7 +235,8 @@ test("le bouton d'export se grise sur la ligne refusée, et son infobulle nomme 
     const eteints = boutons.filter((b) => b.eteint);
     assert.equal(eteints.length, 1,
       eteints.length + " bouton(s) « Exporter » éteint(s) sur 3, 1 attendu. Le semis pose "
-      + "UNE ligne portant « Sous résistance », qui n'a pas d'équivalent MQL5 : zéro "
+      + "UNE ligne portant « Sous résistance » à l'ACHAT, que le générateur ne sait pas "
+      + "encore écrire : zéro "
       + "éteint veut dire qu'un bouton plein va refuser après le clic ; deux ou trois "
       + "veut dire qu'on vient de retirer un geste qui marche.");
     assert.match(eteints[0].titre, /Sous résistance/,
