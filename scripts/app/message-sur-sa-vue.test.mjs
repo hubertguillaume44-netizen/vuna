@@ -11,8 +11,8 @@
 //   | Mes décisions › Portefeuille   | NON                 | 3                         |
 //   | Mes scans › Historique         | oui                 | 0                         |
 //
-// Les trois refus de `exporterRobot` — générateur inchargeable, filtre sans
-// pas encore transposé, générateur qui jette — PARLENT tous les trois : ils posent
+// Les trois refus de `exporterRobot` — générateur inchargeable, un
+// filtre pas encore transposé, générateur qui jette — PARLENT tous les trois : ils posent
 // `hasardMsg`. Cette phrase n'avait de surface que sous `vueHistorique`, et les
 // trois boutons qui la déclenchent vivent sous `vuePortefeuille`. Le geste
 // répondait dans une pièce vide.

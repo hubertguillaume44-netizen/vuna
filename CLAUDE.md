@@ -5450,7 +5450,8 @@ le seul arbitrage que le lecteur ait à faire.
 
 La garde s'ancre sur l'**ABSENCE** (règle 14, troisième issue) : son sujet a disparu, et
 elle attrape la réintroduction, qui est le risque réel puisque la formule est courte et
-évidente. Elle lit les CHAÎNES émises, jamais la prose : **un** commentaire du produit
+évidente. *(Elle a d'abord été écrite sur le texte brut, et la
+section suivante dit ce qu'elle a laissé passer.)* Elle lit les CHAÎNES émises, jamais la prose : **un** commentaire du produit
 raconte encore l'ancien libellé — celui qui critiquait déjà la généralité du message de
 lot — et il a le droit de le citer (règle 3).
 
@@ -5464,3 +5465,72 @@ la décrit.)*
 font : elle ne lit que `Vuna.dc.html` et `robot-mt5.js`, donc l'interdit qu'elle épelle
 ne vit pas dans sa population. *Ce que je mesure ne contient pas ma mesure* — pas par
 exception, par construction.
+
+#### Un remplacement en masse compte les surfaces qu'il a CORRIGÉES, jamais celles qu'il n'a pas vues
+
+**PROVENANCE · surface manquée TROUVÉE PAR L'UTILISATEUR dans le fichier livré, à
+l'octet près (`~3 035 757`) ; cause et correctif MESURÉS DANS LE DÉPÔT.**
+
+Le rapport de livraison disait « les quatre disent maintenant… ». Mesuré sur `260920` :
+**une** occurrence de la formule neuve pour **une** de l'ancienne, toujours là. Et, à
+`~1 413 396`, une phrase cassée — *« filtre sans pas encore transposé »*.
+
+**Le compte de quatre venait des sites qui APPELLENT le message, pas de ceux qui
+l'ÉCRIVENT.** Deux populations, l'une comptée pour l'autre — le défaut que ce fichier
+interdit en toutes lettres trois cents lignes plus haut, commis dans le commit qui
+ajoutait la garde contre lui.
+
+> **Une substitution textuelle est une sonde autant qu'un geste : elle rapporte ce
+> qu'elle a touché, jamais ce qu'elle n'a pas trouvé.** Son compte de remplacements est
+> un compte de succès, et un compte de succès ne mesure aucun échec. *Dénombrer les
+> surfaces corrigées est une intention ; confronter deux sources est le résultat.*
+
+**Les deux dégâts sont symétriques, et c'est ce qui nomme la classe** : elle a frappé de
+la prose qu'elle ne visait pas — parce qu'un motif court vit dans des phrases dont il
+n'est pas le sujet — et manqué la seule surface qui coupait sa phrase en deux morceaux.
+*Trop large d'un côté, trop étroit de l'autre, pour la même raison : elle ne comprenait
+pas ce qu'elle lisait.*
+
+##### Et les DEUX raisons de la survie étaient déjà écrites ici, avec leur sortie
+
+C'est ce qui rend l'épisode instructif plutôt qu'anecdotique. La surface manquée est
+`faireAide`, et elle échappait pour deux motifs indépendants :
+
+| ce qui l'a cachée | ce que le fichier disait déjà |
+|---|---|
+| la phrase coupée en deux littéraux — `' n’a pas d’équivalent '` puis `'MQL5 fidèle.'` : aucun ne porte les deux mots | **le SEUIL était posé** : « si le cas revient une troisième fois, la conclusion n'est pas un troisième `prettier-ignore` — c'est que la prise doit concaténer les littéraux adjacents avant de lire » |
+| l'apostrophe **réelle** (U+2019) là où le motif épelait l'échappement `’` | `sorties-hors-seance`, **en miroir exact** — là c'est l'échappement qui échappait à un motif portant le vrai caractère |
+
+**Le seuil avait donc été franchi une fois de plus, et personne ne l'a reconnu — parce
+qu'il était écrit pour les gardes, et que c'était un REMPLACEMENT qui le franchissait.**
+Un seuil écrit d'avance ne se déclenche pas tout seul : il faut que le lecteur se
+reconnaisse dans le cas, et une substitution en masse ne ressemble pas à une garde.
+
+La sortie est celle que la règle 3 prescrit — **changer de forme, pas ajouter deux
+motifs**. La garde lit les `<script>` par espree, aplatit les chaînes d'un `+` et rend
+leur VALEUR : l'échappement et le caractère réel deviennent le même texte, et la coupure
+cesse d'exister pour elle. Vérifié par mutation — la surface manquée remise telle
+quelle, avec ses deux littéraux et son apostrophe réelle, la fait tomber en citant la
+phrase reconstituée.
+
+##### Mais la forme ne ferme que la RÉINTRODUCTION — la source unique ferme la classe
+
+Une garde qui interdit l'ancienne formule laisse un sixième appelant recopier la
+**neuve** et diverger au renommage suivant. Cinq copies ont produit exactement ça :
+quatre corrigées, une manquée, et rien pour le dire.
+
+Le motif du refus a donc UNE source, `REFUS_ROBOT`, lue par ses quatre appelants — la
+figure de `deposes`, appliquée à une phrase. Et elle est écrite **en un seul littéral**,
+parce que la coupure est précisément ce qui l'avait rendue invisible.
+
+**Et l'assertion qui tient ce dernier point a été écrite CREUSE.** Premier jet :
+`assert.match(SRC, /REFUS_ROBOT = '/)`. Éprouvée par la mutation qui recoupe la
+constante, elle est restée **verte** — le motif décrit le DÉBUT d'un littéral, donc il
+passe avec ou sans la coupure qu'il prétend interdire. C'est l'assertion creuse du
+chapitre des gardes aveugles, commise dans la garde écrite contre la coupure. La prise
+est désormais la **forme du nœud** — l'initialisateur doit être un `Literal`, pas un
+`BinaryExpression` — et la mutation la fait tomber en nommant le type obtenu.
+
+> **Quand on interdit une forme de texte, la prise ne peut pas être du texte.** Un motif
+> qui décrit le début d'une chaîne ne sait rien de sa fin — c'est le préfixe `vena.` qui
+> décrivait toutes les clés sauf celle qui les construit, sur une autre grandeur.

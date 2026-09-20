@@ -38,6 +38,65 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { borne } from "../lib/tranche.mjs";
 import { filtresBloquants } from "../../robot-mt5.js";
+import * as espree from "espree";
+
+// ————— CE QUI EST ÉMIS, PAS CE QUI EST ÉCRIT —————
+// Rend le texte de chaque chaîne du source, les chaînes d'un `+` APLATIES en une. Deux
+// littéraux concaténés redeviennent la phrase qu'ils composent, et un échappement
+// redevient son caractère : la garde cesse de dépendre de la façon dont le texte est
+// coupé ou épelé. Un fichier qu'espree refuse LÈVE, avec sa raison — le taire rendrait
+// la garde aveugle sur ce fichier sans rougir.
+function textesEmis(src, genre) {
+  const blocs = genre === "module" ? [src]
+    : [...src.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
+      .filter((m) => !/\bsrc\s*=/.test(m[1])).map((m) => m[2]);
+  const out = [];
+  for (const code of blocs) {
+    let arbre;
+    try {
+      arbre = espree.parse(code, { ecmaVersion: 2023, sourceType: "module", loc: true });
+    } catch (e) {
+      throw new Error("espree refuse un bloc de source : " + e.message
+        + " — la garde ne saute pas en silence, elle serait aveugle sur ce bloc.");
+    }
+    const plat = (n) => {
+      if (n.type === "Literal" && typeof n.value === "string") return n.value;
+      if (n.type === "TemplateLiteral" && !n.expressions.length) return n.quasis[0].value.cooked;
+      if (n.type === "BinaryExpression" && n.operator === "+") {
+        const g = plat(n.left), d = plat(n.right);
+        if (g === null && d === null) return null;
+        return (g === null ? "\u0000" : g) + (d === null ? "\u0000" : d);
+      }
+      return null;
+    };
+    const vus = new Set();
+    const marcher = (n, dansPlus) => {
+      if (!n || typeof n !== "object") return;
+      if (Array.isArray(n)) { for (const x of n) marcher(x, dansPlus); return; }
+      if (n.type === "BinaryExpression" && n.operator === "+" && !dansPlus) {
+        const t = plat(n);
+        if (t !== null) { out.push(t); for (const y of noeudsDe(n)) vus.add(y); }
+      }
+      if (n.type === "Literal" && typeof n.value === "string" && !vus.has(n)) out.push(n.value);
+      for (const k of Object.keys(n)) {
+        if (k === "loc" || k === "range" || k === "parent") continue;
+        marcher(n[k], dansPlus || (n.type === "BinaryExpression" && n.operator === "+"));
+      }
+    };
+    marcher(arbre, false);
+  }
+  return out;
+}
+function* noeudsDe(n) {
+  if (!n || typeof n !== "object") return;
+  if (Array.isArray(n)) { for (const x of n) yield* noeudsDe(x); return; }
+  if (typeof n.type === "string") yield n;
+  for (const k of Object.keys(n)) {
+    if (k === "loc" || k === "range" || k === "parent") continue;
+    yield* noeudsDe(n[k]);
+  }
+}
+const NEUF_SRC = /pas encore transpos\u00e9 en MQL5/;
 
 const SRC = readFileSync(new URL("../../Vuna.dc.html", import.meta.url), "utf8");
 const I_CFG = borne(SRC, "  cfgCourante(sym, periode, sl, rr, etat, plus) {");
@@ -130,27 +189,41 @@ test("aucun libellé du produit n'affirme une IMPOSSIBILITÉ de transposition", 
   // code qui manque. Ce que ça change pour le lecteur n'est pas cosmétique — c'est
   // renoncer au filtre ou l'attendre.
   //
-  // ANGLE MORT DÉCLARÉ, EN TÊTE (règle 9) : elle attrape LA FORMULE, pas la classe. Une
-  // autre façon de dire la même fatalité — « impossible à transposer », « ne sera
-  // jamais écrit » — lui échapperait. Lui apprendre un motif de plus à chaque essai est
-  // la course que la règle 3 refuse, et la classe « ce libellé affirme-t-il une
-  // impossibilité ? » n'a pas de forme qu'un test puisse lire : c'est de la prose. Ce
-  // qu'elle ferme est ce qui s'est produit — la RÉINTRODUCTION d'une formule courte,
-  // évidente et déjà écrite quatre fois. S'ancrer sur l'ABSENCE (règle 14, troisième
-  // issue) est tout ce qu'on peut honnêtement garder ici.
+  // ELLE A ÉTÉ ÉCRITE UNE PREMIÈRE FOIS SUR LE TEXTE BRUT, ET ELLE A LAISSÉ PASSER LA
+  // SURFACE QUI COMPTAIT. Deux raisons, et chacune est une figure que ce fichier porte
+  // déjà :
+  //   · `faireAide` coupe sa phrase en DEUX littéraux — `' n’a pas d’équivalent '` puis
+  //     `'MQL5 fidèle.'` — donc aucun littéral pris seul ne portait les deux mots
+  //     cherchés. C'est la fragmentation en littéraux, dont le SEUIL était déjà écrit :
+  //     « la conclusion n'est pas un troisième prettier-ignore, c'est de concaténer les
+  //     littéraux adjacents avant de lire » ;
+  //   · elle porte l'apostrophe RÉELLE (U+2019), quand le motif épelait l'échappement
+  //     `’` — le miroir exact du piège de `sorties-hors-seance`.
   //
-  // Elle lit les CHAÎNES émises, jamais la prose : UN commentaire du produit raconte
-  // encore l'ancien libellé, et il a le droit de le citer (règle 3). Elle n'a pas
-  // besoin de s'exclure nommément — elle ne lit ni son propre fichier ni CLAUDE.md,
-  // donc l'interdit qu'elle épelle ne vit pas dans sa population.
+  // La prise change donc de FORME plutôt que de gagner deux motifs (règle 3) : espree
+  // lit les `<script>` et rend la valeur des chaînes, donc l'échappement et le
+  // caractère réel deviennent le même texte ; et les chaînes d'un `+` sont aplaties,
+  // donc la coupure cesse d'exister pour la garde. Il n'y a plus de grammaire à
+  // réapprendre au coup par coup.
+  //
+  // ET ELLE PROUVE SA PRISE : elle exige de voir la formule NEUVE. Une garde qui
+  // interdit une chaîne et ne trouve plus rien du tout est verte sur du vide — c'est
+  // exactement comme ça qu'on a annoncé quatre surfaces corrigées pour cinq.
+  const SOURCES = [["Vuna.dc.html", SRC, "script"], ["robot-mt5.js", ROBOT, "module"]];
+  const OLD = /(n'a|n'ont|sans) (pas )?d?'?\s*équivalent[^.]*MQL5|MQL5[^.]*(n'a|n'ont) pas d'équivalent/;
+  const NEUF = /pas encore transpos/;
   const fautifs = [];
-  for (const [nom, src] of [["Vuna.dc.html", SRC], ["robot-mt5.js", ROBOT]]) {
-    for (const m of src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) {
-      if (/MQL5/.test(m[1]) && /(n\\u2019|n')(a|ont) pas d/.test(m[1])) {
-        fautifs.push(nom + " : « " + m[1].slice(0, 90) + " »");
-      }
+  let vus = 0;
+  for (const [nom, src, genre] of SOURCES) {
+    for (const txt of textesEmis(src, genre)) {
+      const t = txt.replace(/[‘’ʼ]/g, "'");
+      if (NEUF.test(t)) vus++;
+      if (OLD.test(t)) fautifs.push(nom + " : « " + t.slice(0, 110) + " »");
     }
   }
+  assert.ok(vus >= 2, "la formule « pas encore transposé » n'est rendue que " + vus
+    + " fois dans les chaînes émises : la garde ne regarde plus les bons fichiers, et "
+    + "son interdit passerait au vert sur du vide.");
   assert.deepEqual(fautifs, [],
     "un libellé affirme qu'un réglage n'a pas d'équivalent MQL5 :\n  "
     + fautifs.join("\n  ")
@@ -158,5 +231,41 @@ test("aucun libellé du produit n'affirme une IMPOSSIBILITÉ de transposition", 
     + "quatre filtres sont transposables et que le refus est un chantier non fait. Un "
     + "libellé qui annonce une impossibilité fait renoncer au filtre ; un libellé qui "
     + "annonce un chantier laisse le choix d'attendre. Écrivez « n'est pas encore "
-    + "transposé en MQL5 ».");
+    + "transposé en MQL5 » — et passez par `REFUS_ROBOT`, qui est la seule source.");
+});
+
+test("le motif du refus a UNE source, pas une surface par appelant", () => {
+  // ————— C'EST LA MOITIÉ QUI FERME LA CLASSE —————
+  // Interdire l'ancienne formule empêche la RÉINTRODUCTION ; elle n'empêche pas qu'un
+  // sixième appelant recopie la neuve et diverge au renommage suivant. Cinq copies ont
+  // produit exactement ça : quatre corrigées, une manquée, et rien pour le dire.
+  // Une porte unique ferme la CLASSE — la figure de `deposes`, appliquée à une phrase.
+  const porteurs = textesEmis(SRC, "script").filter((t) => NEUF_SRC.test(t));
+  assert.deepEqual(porteurs.length, 1,
+    porteurs.length + " chaîne(s) de `Vuna.dc.html` portent le motif du refus en clair, "
+    + "1 attendue (la constante `REFUS_ROBOT`). Les voici :\n  "
+    + porteurs.map((t) => "« " + t.slice(0, 80) + " »").join("\n  ")
+    + "\n\nChaque copie est une surface qu'un remplacement en masse peut manquer — et il "
+    + "en a manqué une. Lisez `this.REFUS_ROBOT` au lieu de réécrire la phrase.");
+  // ————— ET CETTE ASSERTION-CI A ÉTÉ ÉCRITE CREUSE UNE FOIS —————
+  // Premier jet : `assert.match(SRC, /REFUS_ROBOT = '/)`. Éprouvée par la mutation qui
+  // recoupe la constante en deux morceaux, elle est restée VERTE — le motif décrit le
+  // DÉBUT d'un littéral, donc il passe avec ou sans la coupure qu'il prétend interdire.
+  // C'est l'assertion creuse : sa condition ne mord pas sur le décor. La prise est donc
+  // la forme du nœud, pas celle du texte.
+  const decl = [...noeudsDe(espree.parse(
+    [...SRC.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
+      .filter((m) => !/\bsrc\s*=/.test(m[1])).map((m) => m[2]).join("\n;\n"),
+    { ecmaVersion: 2023, sourceType: "module" }))]
+    .filter((n) => (n.type === "PropertyDefinition" || n.type === "VariableDeclarator")
+      && n.key?.name === "REFUS_ROBOT" || n.id?.name === "REFUS_ROBOT");
+  assert.equal(decl.length, 1,
+    decl.length + " déclaration(s) de `REFUS_ROBOT`, 1 attendue : la garde ne trouve "
+    + "plus son sujet, et les deux assertions ci-dessus mesureraient le décor.");
+  assert.equal(decl[0].value?.type, "Literal",
+    "`REFUS_ROBOT` n'est plus UN littéral — son initialisateur est un "
+    + decl[0].value?.type + ". La phrase est de nouveau coupée en morceaux, et c'est "
+    + "exactement la coupure qui l'a rendue invisible à un remplacement en masse : "
+    + "`' n’a pas d’équivalent ' + 'MQL5 fidèle.'` ne contient aucune des deux chaînes "
+    + "qu'on cherchait. Écrivez-la d'un seul tenant.");
 });
