@@ -6221,6 +6221,39 @@ acceptable pour ça, donc pas de tolérance à écrire.
 exigés. Les figer ferait rougir la garde au premier trou ajouté à un attribut SVG — un
 faux refus sur le cas normal, donc une garde qu'on désactive.
 
+### Une classe de tolérance écrite sur la FORME avale le défaut de même forme
+
+**PROVENANCE · la question est de l'utilisateur, la réponse RELUE puis MESURÉE DANS LE
+DÉPÔT.** Elle tenait en une ligne : la classe A est-elle reconnue sur la forme du
+message — `Error: <line> attribute y1: Expected length` — ou sur la forme **et** sa
+valeur, c'est-à-dire la présence littérale de `{{` ?
+
+**C'est la seconde, et le prédicat le porte** (`&& m.texte.includes("{{")`, aux trois
+classes de trou). Si c'était la première, un vrai défaut — un calcul de creux rendant
+`NaN` — aurait produit `Expected length, "NaN"`, serait tombé dans la classe A, compté au
+vert, et se serait noyé dans les quarante-sept.
+
+> **Une garde qui tolère par la FORME certifie le bruit au lieu de le surveiller**, et
+> c'est pire que pas de garde : un fond non surveillé laisse au moins le doute, un fond
+> certifié le retire. C'est la famille de *ce qui coûte, c'est ce qui arrête de chercher*,
+> appliquée à une ligne de base.
+
+**ET LA LECTURE NE SUFFISAIT PAS À LE DIRE, ce qui est la moitié qui s'ajoute au
+dépôt.** J'avais la réponse en relisant mon propre prédicat — c'est un CONSTAT, et le
+fichier écrit ailleurs qu'*un constat dit où l'on en est ; une garde dit ce qui ne pourra
+plus arriver*. La troisième mutation injecte donc le défaut lui-même, par
+`VUNA_CONSOLE_MUT_JS` : un `setAttribute('y1','NaN')` au chargement. Mesuré — la garde
+rougit en citant `Error: <line> attribute y1: Expected length, "NaN".`, et **le compte de
+la classe A reste à 47**. Le message n'a pas été absorbé ; sans le `{{`, il aurait compté
+48 et la suite serait restée verte.
+
+**Et c'est aussi la réponse au choix de ne pas figer les comptes.** Non figés, ils
+laisseraient un désancrage partiel invisible — le défaut du chapitre de la prise qui ne
+compte que « pas zéro ». Ce qui tient ici n'est pas le compte : c'est que la VALEUR
+fautive fasse partie du prédicat, donc qu'un message de même forme et d'autre valeur ne
+puisse pas entrer. *Une tolérance se borne par ce qu'elle décrit, jamais par combien de
+fois elle le voit.*
+
 **La classe D porte SA CONDITION, et elle est étroite exprès.** Sous `file://` le
 manifeste est refusé, et le navigateur en tire trois lignes pour un fait — dont une,
 « Failed to load resource », ne nomme rien. L'accepter sans condition ferait de cette

@@ -59,6 +59,13 @@ const CHROMIUMS = [process.env.VUNA_CHROMIUM,
 // Chacune est une FORME de message, pas un compte. `ctx` porte ce que la capture entière
 // sait, pour les classes qui ont une condition (voir D).
 const CLASSES = [
+  // ————— LA VALEUR FAIT PARTIE DE LA CLASSE, ET C'EST CE QUI L'EMPÊCHE D'AVALER —————
+  // Les trois classes de trou portent `includes("{{")`, et ce n'est pas un ornement du
+  // motif : une classe écrite sur la FORME seule — « Expected length » — absorberait un
+  // VRAI défaut rendant `y1="NaN"`, qui se compterait au vert et se noierait dans les 47.
+  // La garde aurait alors remplacé un fond de bruit par un fond de bruit CERTIFIÉ, ce qui
+  // est pire : on croirait le canal surveillé. Mesuré, troisième mutation en pied de
+  // fichier — le compte de A reste à 47 et le « NaN » sort ORPHELIN.
   { cle: "A · attribut SVG recevant un trou de gabarit",
     pourquoi: "le navigateur type-vérifie x1/y1/d/points… AVANT que le runtime DC "
       + "substitue le trou. Artefact d'analyse, une fois par chargement.",
@@ -111,6 +118,12 @@ async function capturer() {
     if (process.env.VUNA_CONSOLE_MUT) {
       // mutation : un message d'une QUATRIÈME forme, injecté au chargement
       await p.addInitScript(`console.warn(${JSON.stringify(process.env.VUNA_CONSOLE_MUT)})`);
+    }
+    if (process.env.VUNA_CONSOLE_MUT_JS) {
+      // mutation : du JS arbitraire, pour faire produire au NAVIGATEUR un message de la
+      // forme d'une classe déclarée mais avec une valeur fautive RÉELLE. Voir la troisième
+      // mutation en pied de fichier.
+      await p.addInitScript(process.env.VUNA_CONSOLE_MUT_JS);
     }
     await p.goto("file://" + SOLO);
     await p.waitForFunction(() => document.body && document.body.innerText.length > 400,
@@ -185,3 +198,16 @@ test("la console du chargement ne porte QUE des formes déclarées, et chacune e
 //     messages deviennent orphelins). Et en ajouter une qui ne décrit rien → rouge par
 //     la SECONDE. Les deux vérifiées. C'est le registre à deux sens : une forme sans
 //     classe et une classe sans forme tombent chacune de leur côté.
+//
+// 3 · Un VRAI défaut de la forme d'une classe déclarée, mais avec une valeur fautive
+//     réelle — un calcul qui rendrait `NaN` :
+//       VUNA_CONSOLE_MUT_JS="addEventListener('DOMContentLoaded',()=>{…\
+//         l.setAttribute('y1','NaN')})" node --test scripts/app/console-au-chargement.test.mjs
+//     → rouge, en citant `Error: <line> attribute y1: Expected length, "NaN".`, et le
+//     compte de la classe A reste à 47 — le message n'a PAS été absorbé. Vérifié.
+//
+//     C'est la mutation qui éprouve la VALEUR et non la forme, et elle était la seule
+//     question ouverte sur ce fichier : une classe écrite sur « Expected length » seul
+//     serait restée VERTE ici, en comptant 48. Et elle répond du même coup au choix de ne
+//     pas figer les comptes (règle 16) : non figés, ils laisseraient un désancrage
+//     partiel invisible ; c'est la valeur dans le prédicat, pas le compte, qui tient.
