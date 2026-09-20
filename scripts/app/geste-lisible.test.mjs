@@ -36,11 +36,20 @@ import { readFileSync } from "node:fs";
 const APP = readFileSync(new URL("../../Vuna.dc.html", import.meta.url), "utf8");
 
 test("le retrait d'une ligne de portefeuille porte un MOT, pas un glyphe", () => {
-  assert.ok(APP.includes("                    retirerPfTxt: arme ? 'confirmer' : 'Retirer',"),
+  // RÉANCRÉE (règle 14, deuxième issue) : le retrait a cessé d'être conditionnel à
+  // l'onglet, et son libellé se lit maintenant dans une branche. L'invariant — un MOT,
+  // jamais un glyphe — n'a pas bougé ; c'est son ancre qui a changé de forme. Le même
+  // invariant est mesuré AU RENDU, sur chaque onglet, par `retrait-toujours-possible` :
+  // ici on tient le texte du produit, là on tient ce que l'écran porte.
+  assert.ok(APP.includes("retirerPfTxt: tout ? 'Retirer' : (arme ? 'confirmer' : 'Retirer'),"),
     "le retrait par rangée redevient un glyphe nu. Mesuré : 11 × 20 pixels, sans "
     + "libellé, collé à la barre de part, sur une rangée qui porte « Exporter » en "
     + "bouton plein — le geste existe, il agit, et personne ne le trouve. Du point de "
     + "vue de l'utilisateur, introuvable et absent sont le même geste.");
+  assert.ok(APP.includes("'Retirer ' + symL + ' de vos lignes retenues"),
+    "l'infobulle du retrait depuis « Toutes les lignes » ne nomme plus son SUJET. Le "
+    + "même verbe couvre deux gestes — quitter un portefeuille, quitter les lignes "
+    + "retenues — et rien d'autre à l'écran ne les sépare.");
   // le second temps reste : la dernière ligne d'un portefeuille ne part pas d'un clic
   assert.ok(APP.includes("if (derniere && !arme) { this.setState({ pfLigneSuppr: cleL }); return; }"),
     "le second clic de confirmation a disparu : la dernière ligne d'un portefeuille "

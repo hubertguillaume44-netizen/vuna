@@ -71,6 +71,46 @@ const INCONNUS = {
 // dépendre un fait du marché de l'avancement d'un chantier.
 const REGLAGES_BLOQUANTS = { btDelai: 'Délai d\u2019entrée' };
 
+// ————— ET LA SÉCURISATION N'EST PAS UN FILTRE : ELLE N'EST PAS DANS LE COMPTE —————
+//
+// `cfgCourante` rend TROIS sécurisations, et le robot n'en sait écrire que deux. Sa
+// sécurisation vient d'UNE source, `ctx.paliers` : des paliers, ou rien. Le stop
+// suiveur n'a pas de paliers — `paliersDe` rend `[]` dessus, exprès —, donc il arrivait
+// ici sous la forme exacte de « aucune sécurisation », et le robot descendait
+// SANS RIEN pendant que la ligne affichait « stop suiveur 1,50 % ».
+//
+// C'est le défaut du matin du 20/09/2026, à une aggravation près : un filtre absent
+// change un NOMBRE DE TRADES ; une sécurisation absente change ce qui arrive à une
+// position ouverte avec de l'argent réel dessus. La magnitude mesurée sur les dix
+// familles — à 1,5 % les jeux de trades sont quasi identiques, à 0,3 % vx-eur passe de
+// 81 à 134 trades et vx-tech de +56,7 à +17,0 R — NE PROTÈGE PAS : elle mesure ce que
+// perd la MESURE, pas ce que risque une position que rien ne sécurise.
+//
+// AUCUN FAUX REFUS POSSIBLE (règle 16) : il n'y a rien à transposer, donc aucune
+// configuration légitime ne tombe dedans. `btBE` éteint rend « aucun » et passe ;
+// `be_progressif` sans palier armé rend « aucun » chez les deux côtés et passe aussi.
+//
+// LA PARTITION EST ÉCRITE, pas devinée : toute sécurisation que `cfgCourante` peut
+// produire est ici ou dans `SORTIES_ECRITES`, jamais dans ni l'une ni l'autre. Une
+// quatrième naîtrait sans porte, et `sortie-secu-refusee.test.mjs` la nomme — c'est
+// la forme du registre, il échoue dans les deux sens.
+const SORTIES_BLOQUANTES = { trailing: 'Stop suiveur' };
+const SORTIES_ECRITES = { aucun: 1, be_progressif: 1 };
+
+// Le type de sécurisation que la MESURE porte, lu depuis l'état des réglages.
+//
+// C'est un MIROIR du ternaire de `cfgCourante`, et il faut le dire : deux lectures d'un
+// seul fait. Le robot ne peut pas lire la configuration — `ctx.paliers` rend `[]` pour
+// « aucun » ET pour « suiveur », ce qui est exactement l'aveuglement qu'on ferme —, donc
+// l'état est le seul canal que les deux partagent. Ce qui les tient d'accord n'est pas
+// un commentaire : `sortie-secu-refusee.test.mjs` découvre les types du ternaire dans
+// `Vuna.dc.html` et les confronte à ceux-ci, dans les deux sens. La forme de
+// `meme-horloge` — le défaut ne serait dans aucun des deux pris seul.
+export function sortieSecu(etat) {
+  if (!etat || !etat.btBE) return 'aucun';
+  return String(etat.typeSecu || '') === 'trailing' ? 'trailing' : 'be_progressif';
+}
+
 // ————— ET DEUX DE CES QUATRE NE SONT PAS DANS LA MESURE D'UNE VENTE —————
 //
 // `cfgCourante` les pousse sous `&& !vente` : à la vente, « sous résistance » et « hors
@@ -130,6 +170,11 @@ export function filtresBloquants(etat) {
   for (const k of Object.keys(REGLAGES_BLOQUANTS)) {
     if (etat && Number(etat[k]) > 0) l.push(REGLAGES_BLOQUANTS[k]);
   }
+  // La sécurisation ne passe pas par `REGLAGES_BLOQUANTS` : celle-ci se déclenche sur
+  // `Number(etat[k]) > 0`, et `typeSecu` porte un MOT. Un réglage dont la valeur est un
+  // mot y serait toujours à zéro, donc toujours accepté — silencieusement.
+  const secu = SORTIES_BLOQUANTES[sortieSecu(etat)];
+  if (secu) l.push(secu);
   return l;
 }
 
@@ -422,7 +467,7 @@ input ulong  InpMagic           = ${nb(ctx.magic, 20260901)};
 // quelle build l'avait émis. Le stamp d'export ne répond pas à cette question : il dit
 // QUAND on a exporté, pas DE QUOI. La marque est écrite ici dans la forme exacte que
 // « npm run app:version » cherche, donc ce fichier est daté comme les deux autres.
-#define VUNA_VERSION "260920.9"
+#define VUNA_VERSION "260920.10"
 //--- Configuration mesurée (ne pas modifier : le backtest ne serait plus valable)
 #define STOP_PCT        ${sl}
 #define OBJECTIF_R      ${rr}

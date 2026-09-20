@@ -6527,6 +6527,115 @@ chacune nomme laquelle des deux moitiés a mordu.
 quoi ce fichier serait sa propre victime. C'est la règle 3 vue depuis l'écrivain, prise
 avant la morsure plutôt qu'après — *le récit évite la forme du code*.
 
+## Un REFUS peut se justifier ; un refus SANS SORTIE est un piège
+
+**STATUT · CAUSE ÉTABLIE — piège RAPPORTÉ sur `260920.9` (une ligne née dans Backtest :
+export refusé à bon droit, et aucun bouton de retrait), cause, magnitude et correctif
+MESURÉS DANS LE DÉPÔT, au rendu, sur l'artefact livré.**
+
+L'export d'un robot peut être refusé : il **produit** un artefact, et un robot qui ne
+reproduit pas sa mesure est pire qu'un robot absent. Le retrait d'une ligne ne produit
+rien et ne peut rien affirmer de faux.
+
+> **Une garde qui refuse et ne laisse aucune sortie n'est pas stricte, elle est un
+> piège.** La ligne morte reste dans le portefeuille, elle entre dans les agrégats, et la
+> seule issue est d'aller désarmer quelque chose. C'est la **règle 16** dans sa forme la
+> plus dure : celle où il n'y a même pas d'interrupteur à désarmer.
+
+**Et la raison écrite du retrait était juste à MOITIÉ, ce qui est le cœur de l'affaire.**
+« Retirer » avait quitté « Toutes les lignes » sur ce motif : *cet onglet est une vue de
+lecture, « retirer » y retirerait de quoi ?* C'est vrai de `retirerPf` — retirer de QUEL
+portefeuille ? Ça ne l'est pas de `basculerValide`, qui retire **la ligne**, qui était
+sur la rangée depuis toujours, et qui n'était rendu nulle part. *Deux gestes portant le
+même verbe ont été confondus, et la rangée a perdu sa seule sortie.*
+
+| mesuré sur `260920.9`, au rendu | rangées | boutons de retrait |
+|---|---|---|
+| « Toutes les lignes » — **l'onglet par DÉFAUT** | 3 | **0** |
+| onglet d'un portefeuille | 3 | 3 |
+
+**Le zéro ne portait pas sur la ligne piégée : il portait sur TOUTES**, y compris des
+lignes parfaitement saines. Ce qui a fait croire à une conséquence du refus d'export est
+une coïncidence d'écran — *le rapport désigne l'endroit où le symptôme a été VU*, et la
+carte du rapport est une carte de l'affichage.
+
+### Le même `sc-if` décalait la grille, et la garde écrite pour ça ne le voyait pas
+
+Mesuré au rendu : **sept cellules pour huit pistes** sur « Toutes les lignes », huit pour
+huit sur l'onglet d'un portefeuille. C'est exactement le défaut que
+`grille-compte-ses-cellules` existe pour fermer — et il vivait sous elle, parce que son
+banc posait `pfOnglet: 1`.
+
+> **Une garde qui mesure UN onglet n'a pas mesuré l'écran.** Le périmètre était écrit à
+> la main (règle 7), et il désignait le seul onglet où la cellule est là. Le nombre
+> d'onglets se **découvre** désormais : un portefeuille de plus entre dans la mesure sans
+> qu'une ligne change.
+
+La cellule est **inconditionnelle** ; c'est son SUJET qui change avec l'onglet, et il vit
+dans l'infobulle — le seul endroit qui sépare « retirer du portefeuille » de « retirer de
+mes lignes retenues ». Un clic suffit des deux côtés parce que « Annuler le retrait », en
+tête de « À ranger », ramène la ligne ET sa place.
+
+### Et la première forme du correctif retirait à l'envers
+
+Elle rebâtissait l'appel : `basculerValide(x.sym || symL, x)`. Mesuré au rendu, les
+lignes retenues sont passées de **3 à 4** — `toutes` est une PROJECTION dont le `sym`
+porte le nom lisible et qui n'emporte ni `entree`, ni `ligne`, ni `periode` : `cleValide`
+ne retrouvait rien et **ajoutait**. Le bouton était là, il répondait, et il faisait
+l'inverse.
+
+> **Un geste qui ne fait pas ce qu'il dit est pire qu'un geste absent** — c'est la
+> famille du conseil attrape-tout, sur une action au lieu d'un texte. Et c'est la règle
+> 11 sur un objet intermédiaire, pour la seconde fois : `w1Perimee` était tombée dans la
+> même projection trois jours plus tôt.
+
+La rangée appelle donc **son propre geste**, `x.retirer`, qui se ferme sur la vraie ligne
+validée et que le « × » de « À ranger » appelle déjà. *Une source, deux rendus.*
+
+`retrait-toujours-possible.test.mjs` compte les retraits sur **chaque** onglet et
+**clique** : le compte des lignes retenues doit baisser de un, et l'annulation être
+offerte. Deux mutations — le `sc-if` remis (0 pour 3 rangées) et le geste rebâti (3 → 4).
+Son angle mort est en tête : les états de ligne sont SEMÉS, pas découverts.
+
+## La sécurisation n'est pas un filtre, donc elle n'était pas dans le compte
+
+**STATUT · CAUSE ÉTABLIE, MESURÉE DANS LE DÉPÔT.** `cfgCourante` rend trois
+sécurisations ; le robot n'en sait écrire que deux. La sienne vient d'**une** source,
+`ctx.paliers` : des paliers, ou rien. Le stop suiveur n'a pas de paliers — `paliersDe`
+rend `[]` dessus, exprès — donc il arrivait au générateur sous la forme exacte de
+« aucune sécurisation », et le robot descendait **sans rien** pendant que la ligne
+affichait « stop suiveur 1,50 % ».
+
+C'est le défaut du matin du 20/09/2026 à une aggravation près, et elle décide :
+
+> **Un filtre absent change un NOMBRE DE TRADES ; une sécurisation absente change ce qui
+> arrive à une position ouverte avec de l'argent réel dessus.** La magnitude mesurée sur
+> les dix familles — à 1,5 % les jeux de trades sont quasi identiques, à 0,3 % vx-eur
+> passe de 81 à 134 trades et vx-tech de +56,7 à +17,0 R — **ne protège pas** : elle
+> mesure ce que perd la MESURE, pas ce que risque une position que rien ne sécurise.
+
+**Et elle ne pouvait pas passer par `REGLAGES_BLOQUANTS`** : cette table se déclenche sur
+`Number(etat[k]) > 0`, et `typeSecu` porte un **mot**. Un réglage dont la valeur est un
+mot y serait toujours à zéro, donc toujours accepté — silencieusement. C'est la forme du
+préfixe `vena.` suivi d'une apostrophe : *un motif écrit sur la FORME d'une valeur se
+fait battre par une valeur d'une autre forme.*
+
+**La partition est ÉCRITE et confrontée, pas devinée.** Toute sécurisation que le
+ternaire de `cfgCourante` peut produire est dans `SORTIES_BLOQUANTES` ou dans
+`SORTIES_ECRITES`, jamais dans ni l'une ni l'autre ; `sortie-secu-refusee.test.mjs`
+découvre les types du ternaire dans `Vuna.dc.html`, les confronte aux deux tables **dans
+les deux sens**, et joue le ternaire du produit contre le miroir `sortieSecu` — la forme
+de `meme-horloge`, le défaut ne serait dans aucun des deux pris seul. Quatre mutations :
+le refus retiré, une quatrième sécurisation sans porte, le miroir qui perd sa garde
+`btBE`, une entrée déclarée sans membre. **Aucun faux refus possible** (règle 16) : il n'y
+a rien à transposer, et les trois cas légitimes — `btBE` éteint, paliers armés, paliers
+tous à zéro — sont éprouvés.
+
+**Ce qui reste relevé et non fermé** : le texte commun du refus (`REFUS_ROBOT`) dit « ce
+filtre » et « un nombre de trades différent de la mesure ». Sur une sécurisation, les deux
+mots sont faux — c'est la classe du champ qui nomme mal ce qu'il porte, et le corriger
+touche une constante que trois gardes tiennent. Non fait.
+
 ## Un fond permanent de messages est un canal de diagnostic hors service
 
 **STATUT · INSTRUMENTATION, AUCUNE CAUSE PRÉTENDUE.** Rien n'est réparé : le fond est

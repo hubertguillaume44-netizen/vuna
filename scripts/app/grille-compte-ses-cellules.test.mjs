@@ -67,8 +67,23 @@ test("l'en-tête et chaque rangée ont les MÊMES pistes, mesurées", { timeout:
     null, { timeout: 90000 });
     await p.evaluate(POSER_SEMIS);
     await p.evaluate("window.__semis.portefeuille(3)");
+    // ————— LA POPULATION EST TOUS LES ONGLETS, PAS CELUI QU'ON AVAIT SOUS LA MAIN —————
+    //
+    // Première forme : `pfOnglet: 1`, l'onglet d'un portefeuille. Le défaut a vécu sur
+    // l'onglet PAR DÉFAUT — « Toutes les lignes », `pfOnglet: 0` —, où un `sc-if` retirait
+    // la cellule du retrait : mesuré sur `260920.9`, SEPT cellules pour HUIT pistes, sur
+    // l'écran que tout le monde ouvre en premier. La garde était verte parce qu'elle
+    // regardait le seul onglet où la cellule est là. Le nombre d'onglets se DÉCOUVRE
+    // (règle 7) : un portefeuille de plus entre dans la mesure sans qu'une ligne change.
+    const onglets = await p.evaluate(`(() => { const i = ${INSTANCE};
+      i.setState({ vue: 'portefeuille' }); i.forceUpdate();
+      return 1 + ((i.state.pfs || []).length); })()`);
+    assert.ok(onglets >= 2, "moins de deux onglets découverts (" + onglets + ") : « Toutes "
+      + "les lignes » et au moins un portefeuille. La découverte est désancrée.");
+
+    for (const og of Array.from({ length: onglets }, (_, j) => j)) {
     await p.evaluate(`(() => { const i = ${INSTANCE};
-      i.setState({ vue: 'portefeuille', pfOnglet: 1 }); i.forceUpdate(); })()`);
+      i.setState({ vue: 'portefeuille', pfOnglet: ${og} }); i.forceUpdate(); })()`);
     await p.waitForFunction(() => document.querySelectorAll(".rang").length >= 3,
       null, { timeout: 60000 });
 
@@ -95,13 +110,13 @@ test("l'en-tête et chaque rangée ont les MÊMES pistes, mesurées", { timeout:
 
     for (const r of mes.rangs) {
       assert.equal(r.cellules, mes.tete.cellules,
-        "une rangée porte " + r.cellules + " cellules quand l'en-tête en déclare "
-        + mes.tete.cellules + ". Le corps a une cellule que l'en-tête n'a pas : toutes "
-        + "les colonnes après l'écart se décalent d'un cran, et deux d'entre elles se "
-        + "partagent une piste. Une grille dont le nombre de colonnes porte du sens "
-        + "compte ses cellules.");
+        "onglet " + og + " : une rangée porte " + r.cellules + " cellules quand l'en-tête en déclare "
+        + mes.tete.cellules + ". Les deux comptes diffèrent, dans un sens ou dans "
+        + "l'autre : toutes les colonnes après l'écart se décalent d'un cran, et deux "
+        + "d'entre elles se partagent une piste — ou une piste reste vide. Une grille "
+        + "dont le nombre de colonnes porte du sens compte ses cellules.");
       assert.equal(r.pistes, mes.tete.pistes,
-        "les pistes CALCULÉES diffèrent — en-tête « " + mes.tete.pistes + " » contre "
+        "onglet " + og + " : les pistes CALCULÉES diffèrent — en-tête « " + mes.tete.pistes + " » contre "
         + "rangée « " + r.pistes + " ». Le même gabarit peut se résoudre différemment "
         + "sous deux parents ; c'est la grille résolue qui décale les colonnes, pas la "
         + "déclaration.");
@@ -120,7 +135,7 @@ test("l'en-tête et chaque rangée ont les MÊMES pistes, mesurées", { timeout:
         + "Si c'est un message d'état, le semis ne sème plus des lignes mesurables et "
         + "la garde ne mesure plus le cas normal.");
       assert.equal(r.retirer, "Retirer",
-        "la dernière colonne ne porte plus le retrait de la ligne : « " + r.retirer
+        "onglet " + og + " : la dernière colonne ne porte plus le retrait de la ligne : « " + r.retirer
         + " ». C'est la cellule que l'en-tête avait en trop, et sa disparition "
         + "réintroduit l'écart de comptes.");
     }
@@ -143,5 +158,6 @@ test("l'en-tête et chaque rangée ont les MÊMES pistes, mesurées", { timeout:
       + "est LU, le format passe pour une bizarrerie et quelqu'un le « corrigera » en "
       + "JJ/MM/AAAA, ce qui casse le seul geste que la colonne sert. Écrivez-le dans "
       + "l'en-tête, pas dans une infobulle : une infobulle ne s'ouvre pas toute seule.");
+    }
   } finally { await nav.close(); }
 });

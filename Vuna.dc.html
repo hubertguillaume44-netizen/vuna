@@ -2600,9 +2600,11 @@
                           <span>{{ vl.periodeT0 }}</span>
                           <span>{{ vl.periodeT1 }}</span>
                         </span>
-                        <sc-if value="{{ vl.aRetirerPf }}" hint-placeholder-val="{{ true }}">
-                          <button type="button" class="lien" style="font-size:11px;justify-self:end;padding:3px 7px;white-space:nowrap;color:{{ vl.retirerPfCouleur }}" title="{{ vl.retirerPfAide }}" onClick="{{ vl.retirerPf }}">{{ vl.retirerPfTxt }}</button>
-                        </sc-if>
+                        <!-- INCONDITIONNELLE : c'est une PISTE de `grilleLigne`, et une
+                             cellule qui disparaît décale tout ce qui la suit — mesuré,
+                             sept cellules pour huit pistes. Le geste, lui, change de
+                             sujet selon l'onglet ; son infobulle le dit. -->
+                        <button type="button" class="lien" style="font-size:11px;justify-self:end;padding:3px 7px;white-space:nowrap;color:{{ vl.retirerPfCouleur }}" title="{{ vl.retirerPfAide }}" onClick="{{ vl.retirerPf }}">{{ vl.retirerPfTxt }}</button>
                       </div>
                       <span style="padding:9px 14px;display:flex;flex-direction:column;gap:3px;align-items:center">
                         <button class="{{ vl.robCls }}" type="button" style="min-height:1.8rem;font-size:11px;padding-inline:10px;width:100%" onClick="{{ vl.exporterRobot }}" disabled="{{ vl.robBloque }}" title="{{ vl.robAide }}">Exporter</button>
@@ -2635,9 +2637,7 @@
                           <button class="btn btn-secondary" type="button" style="min-height:1.85rem;font-size:11px;padding-inline:11px" onClick="{{ vl.auBacktest }}">Rouvrir en Backtest</button>
                           <button class="btn btn-secondary" type="button" style="min-height:1.85rem;font-size:11px;padding-inline:11px" onClick="{{ basculerMesures }}">{{ mesuresTxt }}</button>
                           <button type="button" class="{{ vl.faireCls }}" style="cursor:pointer;border:none;font-family:var(--font-body);font-size:10px;padding:1px 6px;white-space:nowrap" title="{{ vl.faireAide }}" disabled="{{ vl.faireBloque }}" onClick="{{ vl.faire }}">{{ vl.faireTxt }}</button>
-                          <sc-if value="{{ vl.aRetirerPf }}" hint-placeholder-val="{{ true }}">
-                            <button type="button" class="lien" style="margin-inline-start:auto;font-size:11px;color:var(--color-neutral-700)" title="{{ vl.retirerPfAide }}" onClick="{{ vl.retirerPf }}">{{ vl.retirerPfLien }}</button>
-                          </sc-if>
+                          <button type="button" class="lien" style="margin-inline-start:auto;font-size:11px;color:var(--color-neutral-700)" title="{{ vl.retirerPfAide }}" onClick="{{ vl.retirerPf }}">{{ vl.retirerPfLien }}</button>
                         </div>
                       </div>
                     </sc-if>
@@ -17727,7 +17727,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260920.9';
+  VERSION_APP = '260920.10';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
@@ -28578,13 +28578,30 @@ GROUPES = {
                   const derniere = lignes.length === 1;
                   const arme = s.pfLigneSuppr === cleL;
                   return {
-                    // ————— « RETIRER » N'A PAS DE SUJET DANS « TOUTES LES LIGNES » —————
-                    // Cet onglet est une vue de LECTURE sur tous les validés : « retirer »
-                    // y retirerait de quoi ? Laissé rendu, le bouton ne faisait rien —
-                    // exactement le geste mort que le banc des gestes existe pour attraper,
-                    // et il l'a attrapé. Le retrait se fait depuis l'onglet du portefeuille
-                    // qui contient la ligne ; les marques de la rangée disent lesquels.
-                    aRetirerPf: !tout,
+                    // ————— UN REFUS SANS SORTIE EST UN PIÈGE, PAS UNE GARDE —————
+                    //
+                    // « Retirer » avait été RETIRÉ de « Toutes les lignes », et la raison
+                    // écrite était juste à moitié : le geste qui n'a pas de sujet ici,
+                    // c'est `retirerPf` — retirer de QUEL portefeuille ? Le geste qui en a
+                    // un, `basculerValide`, était sur la rangée depuis toujours et n'était
+                    // rendu nulle part. Les deux ont été confondus, et la rangée a perdu sa
+                    // seule sortie.
+                    //
+                    // MESURÉ SUR `260920.9`, au rendu, sur l'artefact livré : « Toutes les
+                    // lignes » est l'onglet PAR DÉFAUT, et il rendait TROIS rangées pour
+                    // ZÉRO bouton de retrait — sur des lignes parfaitement saines comme
+                    // sur une ligne dont la configuration ne se retrouve pas. L'export peut
+                    // être refusé à bon droit ; le retrait, jamais : il ne produit aucun
+                    // artefact et ne peut rien affirmer de faux. Une garde qui refuse sans
+                    // laisser de sortie n'est pas stricte, elle est un piège — règle 16,
+                    // dans sa forme la plus dure.
+                    //
+                    // ET LE MÊME `sc-if` DÉCALAIT LA GRILLE. Mesuré au rendu : sept
+                    // cellules pour huit pistes sur « Toutes les lignes », huit pour huit
+                    // sur l'onglet d'un portefeuille — exactement le défaut que
+                    // `grille-compte-ses-cellules` existe pour fermer, laissé ouvert parce
+                    // que la garde ne mesurait que l'onglet où la cellule est là. La
+                    // cellule est donc INCONDITIONNELLE ; c'est son SUJET qui change.
                     // ————— UN GESTE QUI AGIT MAIS NE SE LIT PAS EST UN GESTE PERDU —————
                     // Mesuré : la croix FONCTIONNE — `syms` passe de trois à deux, la
                     // rangée disparaît, la ligne ne se déplie pas (le `stopPropagation`
@@ -28602,18 +28619,39 @@ GROUPES = {
                     //
                     // Le mot coûte quelques pixels de colonne et rend le geste
                     // trouvable ; « confirmer » garde sa place au second temps.
-                    retirerPfTxt: arme ? 'confirmer' : 'Retirer',
-                    retirerPfLien: arme
-                      ? 'confirmer : dernière ligne de ' + nomPf
-                      : 'retirer du portefeuille',
-                    retirerPfCouleur: arme ? 'var(--color-accent-700)' : 'var(--color-neutral-500)',
-                    retirerPfAide: !derniere
-                      ? 'Retirer ' + symL + ' de ' + nomPf + ' — la configuration retourne dans « À ranger ».'
+                    retirerPfTxt: tout ? 'Retirer' : (arme ? 'confirmer' : 'Retirer'),
+                    retirerPfLien: tout ? 'retirer de mes lignes'
                       : arme
-                        ? 'Cliquez à nouveau : ' + nomPf + ' restera vide — son R par an, son pire creux et sa couverture disparaissent de cette page. La configuration retourne dans « À ranger ».'
-                        : 'Dernière ligne de ' + nomPf + ' : deux clics — le premier dit ce qui disparaît.',
+                        ? 'confirmer : dernière ligne de ' + nomPf
+                        : 'retirer du portefeuille',
+                    retirerPfCouleur: (!tout && arme) ? 'var(--color-accent-700)' : 'var(--color-neutral-500)',
+                    // Le SUJET est dans l'infobulle, parce que le même verbe couvre deux
+                    // gestes qui ne font pas la même chose : ici la ligne quitte les
+                    // validées, là elle quitte un portefeuille. Un clic suffit des deux
+                    // côtés — « Annuler le retrait » vit en tête de « À ranger », sur cette
+                    // page-ci, et ramène la ligne ET sa place d'un clic.
+                    retirerPfAide: tout
+                      ? 'Retirer ' + symL + ' de vos lignes retenues — elle quitte cette page et les portefeuilles qui la portaient. Le scan qui l\u2019a produite n\u2019est pas touché, et « Annuler le retrait », en tête de « À ranger », la ramène d\u2019un clic.'
+                      : !derniere
+                        ? 'Retirer ' + symL + ' de ' + nomPf + ' — la configuration retourne dans « À ranger ».'
+                        : arme
+                          ? 'Cliquez à nouveau : ' + nomPf + ' restera vide — son R par an, son pire creux et sa couverture disparaissent de cette page. La configuration retourne dans « À ranger ».'
+                          : 'Dernière ligne de ' + nomPf + ' : deux clics — le premier dit ce qui disparaît.',
                     retirerPf: (e) => {
                       if (e && e.stopPropagation) e.stopPropagation();
+                      // « Toutes les lignes » est une vue sur TOUTES les validées : le seul
+                      // sujet qu'un retrait y ait est la ligne elle-même. `basculerValide`
+                      // fait aussi le ménage des portefeuilles qui la portaient, et garde de
+                      // quoi annuler.
+                      //
+                      // ON APPELLE LE GESTE DE LA RANGÉE, on ne le refait pas. `toutes`
+                      // est une PROJECTION : son `sym` porte le nom lisible et l'objet
+                      // n'emporte ni `entree`, ni `ligne`, ni `periode` — mesuré, un
+                      // `basculerValide` rebâti ici a fait passer les validées de 3 à 4,
+                      // parce que `cleValide` ne retrouvait rien et AJOUTAIT. `x.retirer`
+                      // se ferme sur la vraie ligne validée, et c'est déjà lui que le
+                      // « × » de « À ranger » appelle.
+                      if (tout) { x.retirer(e); return; }
                       if (derniere && !arme) { this.setState({ pfLigneSuppr: cleL }); return; }
                       this.setState({ pfLigneSuppr: null });
                       this.majPf(pfListe.map((q, j) => (j === k
