@@ -5766,6 +5766,66 @@ gate le filtre NOMME aussi son type. Aucune table de correspondance à tenir à 
 (règle 8). Mutation : retirer un type de `mirroirVente` fait tomber la garde en nommant
 les deux listes.
 
+## Un mode d'emploi nomme les choses comme l'ÉCRAN les montre
+
+**STATUT · CAUSE ÉTABLIE — défaut RAPPORTÉ par l'utilisateur (il a coché la mauvaise
+tuile), cause et correctif MESURÉS DANS LE DÉPÔT, en confrontant le document au panneau.**
+
+`REJEU-SOUS-RESISTANCE.md` disait « cochez **Sous résistance** ». **Le panneau ne porte pas
+ce mot** : sa tuile s'appelle « **Plus haut** ». L'utilisateur a coché « **Zones** », qui
+est juste à côté et dont la description parle elle aussi de résistance — c'est `fZone`, il
+n'est pas transposé, donc l'export est **refusé** et le bouton reste gris. Trente minutes
+perdues sur un bouton qui ne fait rien, pour un mot.
+
+« Sous résistance » est le libellé **interne** : `COURTS_FILTRE.resist`, celui des messages
+de refus. Je l'ai lu dans la source et je l'ai écrit tel quel.
+
+> **Un document destiné à un humain nomme les choses comme l'écran les montre, jamais
+> comme la source les appelle.** C'est la règle 8 appliquée à une instruction : le nom de
+> la source est un **lieu** — l'endroit d'où je l'ai lu —, le nom de l'écran est la
+> **propriété** qui compte, puisque c'est le seul que le lecteur peut voir.
+
+**Et le tri est plus instructif que le cas** : l'utilisateur a vérifié à la main les dix
+autres libellés cités — « Mes scans », « Croisement et Rebond », « Médiane », « Période à
+tester »… — et ils passaient tous. *Celui-ci est le seul qui ne venait pas de l'écran, et
+c'est le seul qui comptait.* Une vérification manuelle exhaustive ne protège de rien quand
+un seul membre de la population a une provenance différente des autres.
+
+### La forme proposée refusait 15 citations sur 15 — mesuré avant d'être écartée
+
+La garde annoncée était : *tout libellé cité entre « » doit se retrouver dans les `nom:` du
+panneau*. Comptée sur ce document : **15 citations distinctes, 15 hors des `nom:`** —
+« Entrée », « Stop », « Transactions », « Chaque tick basé sur des ticks réels », de la
+prose citée. Elle refuse la totalité du cas normal, donc elle est morte le premier jour
+(règle 16).
+
+**La population retenue se découvre et elle est étroite** : les libellés de
+`COURTS_FILTRE`, qui sont exactement les noms que la source donne aux filtres. Trois d'entre
+eux ne sont pas des tuiles — « Sans filtre », « Moyenne mobile », « Sous résistance » —, et
+ce décalage EST le piège. La correspondance interne → tuile se **dérive du drapeau**
+(`resist` → `fResist`, `mtf` → `btMtf`) : aucune table à tenir à jour, un dixième filtre y
+entre sans être nommé nulle part.
+
+`scripts/app/mode-emploi-nomme-lecran.test.mjs` exige donc, pour chaque libellé interne que
+le document cite, que le nom d'écran y soit présent aussi — et **son angle mort est en
+tête** : elle ne sait pas dire s'il est présent au bon endroit. S'ancrer sur l'instruction
+demanderait de reconnaître une phrase, c'est-à-dire de la prose (règle 3).
+
+**La PRISE est éprouvée sur la perte de SUJET**, pas sur un désancrage : aligner le libellé
+interne sur celui de la tuile vide `divergents`, et la garde tombe en disant qu'elle n'a
+plus de sujet, avec ses deux issues écrites. Sans elle, une unification des deux
+vocabulaires la laisserait verte en ne gardant plus rien.
+
+### Et les CHAMPS portaient le même défaut, un cran plus bas
+
+Le document appelait les trois champs « unité / bougies / marge % » ; le panneau écrit
+« **Unité** » / « **Fenêtre** » / « **Marge** » — *bougies* n'est que le suffixe affiché
+après la valeur. Personne n'aurait perdu trente minutes là-dessus, et c'est justement
+pourquoi ça se garde au même endroit : **une classe fermée sur son seul cas visible est un
+lieu.** Le second test lit les trois `ch(…)` de la tuile et exige que le document les cite
+sous ces noms-là. Mutation : un champ renommé dans le panneau le fait tomber en nommant le
+manquant — c'est le bon sens, le jour où l'écran change de mot c'est le document qui a tort.
+
 ## Une garde vérifie ce qui est ÉMIS ; une personne vérifie ce qui est ÉCRIT
 
 **PROVENANCE · la vérification FAUSSE est celle de l'utilisateur, rapportée par lui.**

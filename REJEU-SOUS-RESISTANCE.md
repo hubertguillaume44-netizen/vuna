@@ -69,20 +69,34 @@ Page **Mes scans → Backtest**. Choisissez votre instrument, puis :
 | Unité de décision | **D1** | liste « Unité » du panneau |
 | Frais | laissez ce qui est déjà là | — |
 
-Puis cochez **un seul filtre**, « **Sous résistance** », et réglez-le ainsi :
+Puis, dans la section des filtres, cochez **un seul filtre** : la tuile
+« **Plus haut** ». Réglez ses trois champs ainsi :
 
-| Champ du filtre | Valeur |
+| Champ du filtre (tel qu'il est écrit) | Valeur |
 |---|---|
-| unité | **D1** |
-| bougies | **20** |
-| marge % | **1** |
+| « Unité » | **D1** |
+| « Fenêtre » | **20** |
+| « Marge » | **1** |
+
+> **⚠ NE CONFONDEZ PAS AVEC « Zones », la tuile juste à côté.** Sa description parle
+> elle aussi de résistance — « *n'entre que s'il reste de la place sous la zone de
+> résistance la plus proche* » — et c'est un **autre filtre** (`fZone`), qui n'est **pas**
+> transposé en MQL5. Cochée, elle fait **refuser l'export** à l'étape 3, et le bouton
+> **Exporter** reste gris : vous perdriez le rejeu sans savoir pourquoi.
+>
+> La bonne tuile est celle dont la description dit « *refuse d'acheter trop près du plus
+> haut des N dernières bougies* ».
+
+**Si vous lisez « Sous résistance » quelque part, c'est le même filtre.** C'est le nom
+qu'en donnent les **messages de refus** de l'application (et ce document, dans son titre).
+Le panneau, lui, l'appelle « Plus haut ». Un seul filtre, deux noms.
 
 **Décochez tous les autres filtres.** Un second filtre brouillerait la mesure : on ne
 saurait plus lequel des deux le robot reproduit mal.
 
 **Notez le nombre de trades affiché.** C'est votre **N-avec**.
 
-Puis **décochez « Sous résistance »**, laissez tout le reste identique, et notez le
+Puis **décochez « Plus haut »**, laissez tout le reste identique, et notez le
 nouveau nombre : c'est votre **N-sans**. **Recochez le filtre** ensuite.
 
 > Ces deux nombres sont toute la mesure. Gardez-les à portée de main.
