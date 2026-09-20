@@ -8249,12 +8249,24 @@ class Component extends DCLogic {
   // aujourd'hui, donc la population devrait être vide — mais c'est une mesure sur les
   // données de quelqu'un, pas sur une fixture, et je ne l'ai pas faite.
   filtresPerdus(v, txt) {
-    const m = /Filtres g\u00e9n\u00e9r\u00e9s\s*:\s*(.+?)\s*$/m.exec(String(txt || ''));
-    if (!m) {
-      return 'le robot produit ne porte pas sa ligne « Filtres générés » : rien ne permet '
-        + 'de vérifier qu\u2019il reproduit la mesure de cette ligne.';
+    const lire = (etiq) => {
+      const m = new RegExp(etiq + '\\s*:\\s*(.+?)\\s*$', 'm').exec(String(txt || ''));
+      return m ? m[1].trim() : null;
+    };
+    const auFichier = lire('Filtres g\u00e9n\u00e9r\u00e9s');
+    const typesFichier = lire('Types \u00e9mis');
+    if (auFichier === null || typesFichier === null) {
+      return 'le robot produit ne porte pas ses lignes « Filtres générés » et « Types '
+        + 'émis » : rien ne permet de vérifier qu\u2019il reproduit la mesure de cette ligne.';
     }
-    const auFichier = m[1].trim();
+
+    // ————— COUCHE 1 · LA PRÉSENCE, CONTRE UNE SOURCE INDÉPENDANTE —————
+    // `v.filtres` est le libellé posé À LA MESURE et transporté par la ligne. Il ne
+    // passe par aucune reconstruction d'état, donc il survit à l'effacement des
+    // drapeaux — c'est la seule source qui pouvait attraper le défaut du 20/09/2026.
+    // Son vocabulaire n'est PAS celui du robot (« Plus haut » contre « sous
+    // résistance »), donc cette couche-ci ne peut comparer que la présence. C'est sa
+    // portée, écrite plutôt que subie.
     const auRobot = auFichier !== 'aucun';
     const dit = String((v && v.filtres) || '').trim();
     if (!dit) {
@@ -8264,18 +8276,63 @@ class Component extends DCLogic {
         + 'produit.';
     }
     const aLaLigne = dit !== 'Aucun filtre';
-    if (aLaLigne === auRobot) return '';
-    if (aLaLigne) {
+    if (aLaLigne && !auRobot) {
       return 'la ligne porte « ' + dit + ' », et le robot serait descendu avec « Filtres '
         + 'générés : ' + auFichier + ' ». Il n\u2019aurait pas reproduit la mesure tout en '
         + 'l\u2019annonçant en en-tête. Cause connue : une ligne sauvegardée depuis le '
-        + 'Backtest ne garde pas la photo de ses réglages, et l\u2019export repart alors d\u2019un '
-        + 'état où tous les filtres sont éteints. Relancez un scan et exportez depuis la '
-        + 'ligne qu\u2019il produit.';
+        + 'Backtest par une version antérieure à 260920.9 ne garde pas la photo de ses '
+        + 'réglages, et l\u2019export repart alors d\u2019un état où tous les filtres sont '
+        + 'éteints. Rouvrez-la dans le Backtest et resauvegardez-la, ou relancez un scan.';
     }
-    return 'la ligne annonce « Aucun filtre » et le robot serait descendu avec « Filtres '
-      + 'générés : ' + auFichier + ' » : il mesurerait autre chose que la ligne.';
+    if (!aLaLigne && auRobot) {
+      return 'la ligne annonce « Aucun filtre » et le robot serait descendu avec « Filtres '
+        + 'générés : ' + auFichier + ' » : il mesurerait autre chose que la ligne.';
+    }
+
+    // ————— COUCHE 2 · LE COMPTE, TERME À TERME, DANS UN SEUL VOCABULAIRE —————
+    //
+    // La couche 1 est un BOOLÉEN SUR UNE POPULATION : une mesure à trois filtres et un
+    // robot qui n'en émet qu'un s'y accordent. C'est « un désancrage PARTIEL est
+    // invisible à une prise qui compte zéro », sur un ensemble au lieu d'un zéro — et la
+    // prochaine perte sera partielle, pas totale.
+    //
+    // On compare donc les TYPES : ceux que la configuration RÉSOLUE de la ligne porte
+    // (`cfgCourante`, le vocabulaire du moteur) contre ceux que le robot déclare avoir
+    // émis. L'égalité est EXACTE et non une inclusion : tout ce que la mesure porte et
+    // que le robot ne sait pas écrire a DÉJÀ été refusé par `filtresBloquants` en amont,
+    // donc arrivé ici les deux ensembles doivent coïncider.
+    //
+    // ANGLE MORT, ET IL EST STRUCTUREL : les deux côtés descendent du même état résolu,
+    // donc cette couche ne peut PAS voir un état effacé en amont — sous l'effacement,
+    // les deux ensembles sont vides et s'accordent. C'est exactement ce que la couche 1
+    // couvre, et c'est pourquoi les deux vivent ensemble : *deux couches, deux sujets,
+    // et aucune ne rattrape l'aveuglement de l'autre.*
+    let typesMesure = null;
+    try {
+      const e = this.etatDeLigne(v);
+      const cfg = this.cfgCourante(v.ticker || v.sym, v.periode, v.sl, v.rr, e,
+        { entree: v.entree, ligne: v.ligne });
+      typesMesure = ((cfg && cfg.filtres) || []).map((x) => String(x && x.type || ''));
+    } catch (err) { typesMesure = null; }
+    if (!typesMesure) {
+      return 'la configuration de cette ligne ne se résout pas : impossible de vérifier, '
+        + 'filtre par filtre, que le robot reproduit la mesure. Relancez un scan et '
+        + 'exportez depuis la ligne qu\u2019il produit.';
+    }
+    const tri = (l) => [...l].filter(Boolean).sort();
+    const aM = tri(typesMesure);
+    const aR = tri(typesFichier === 'aucun' ? [] : typesFichier.split(/\s+/));
+    if (aM.join(' ') === aR.join(' ')) return '';
+    const manque = aM.filter((t) => !aR.includes(t));
+    const enTrop = aR.filter((t) => !aM.includes(t));
+    return 'le robot n\u2019émet pas les mêmes filtres que la mesure de cette ligne — '
+      + 'la mesure porte [' + (aM.join(', ') || '\u2014') + '], le robot émet ['
+      + (aR.join(', ') || '\u2014') + ']'
+      + (manque.length ? ' · MANQUE : ' + manque.join(', ') : '')
+      + (enTrop.length ? ' · EN TROP : ' + enTrop.join(', ') : '')
+      + '. Il mesurerait autre chose que ce que la ligne annonce.';
   }
+
   async exporterRobotBrut(v) {
     let mod = null;
     // Paramètre de version : un import dynamique est mis en cache par URL pour toute la
@@ -12822,6 +12879,33 @@ GROUPES = {
       positifs: seg ? seg.positifs : 0, segTotal: seg ? seg.total : 5,
       esp: sup.esp, oos: sup.oos, tenue: sup.tenue, calmar: sup.calmar, nuits: sup.nuits,
       filtres: this.filtresTexte(this.cfgCourante(s.btSym)),
+      // ————— LA PHOTO SE POSE ICI, ET C'EST UN RÉSULTAT —————
+      //
+      // Défaut LIVRÉ : une ligne sauvegardée depuis ce panneau ne portait ni `filtre`
+      // (la clé de variante d'un scan) ni `_sid`, donc `etatDeLigne` retombait sur
+      // `etatDeReference` — qui ÉTEINT les neuf drapeaux de filtre. Le robot exporté
+      // descendait nu sous un en-tête annonçant la mesure filtrée, et le refus d'export
+      // lisait le même état effacé. Un rejeu MT5 de trente minutes pour le découvrir.
+      //
+      // CE QUI LICENCIE LA PHOTO EST UNE PROPRIÉTÉ, pas une intention : depuis 260918.9,
+      // le panneau mesure `cfgCourante()` et rien d'autre. Les chiffres qu'il affiche
+      // SONT ceux des réglages affichés — c'est la garde `panneau-mesure-ce-quil-affiche`
+      // qui le tient, en remesurant. Donc `this.state`, à l'instant où `ligneBt()`
+      // construit sa ligne, est la configuration mesurée : la photo est fidèle par
+      // construction, exactement au sens où `_reg` l'est après un scan.
+      //
+      // ET ELLE EST POSÉE ICI PLUTÔT QUE DANS `basculerValide`, qui a dix appelants dont
+      // neuf passent des lignes de SCAN — pour celles-là `this.state` n'est pas la
+      // mesure, et une photo prise là serait un état plausible à la place de l'état
+      // mesuré. `ligneBt()` est, par construction, « ce que le panneau vient de
+      // mesurer » : c'est le seul endroit où la propriété ci-dessus est vraie.
+      //
+      // Le gate `e._exact` de `basculerValide` n'est pas touché : `etatDeLigne` rend
+      // `_exact: true` dès qu'une photo existe, donc le chemin existant fait le reste.
+      // Ses trois autres lecteurs — le prédicat W1, le rattrapage au démarrage, et la
+      // provenance du contrôle du hasard — gardent le même sens : « l'état reconstruit
+      // est fidèle à la mesure », ce qu'il est désormais aussi pour cette ligne-ci.
+      _reg: this.snapshotReglages(s),
       ...(() => { const f = this.fenetre(s); return f.complete ? {} : { fen: this.fenPlate(f) }; })() };
   }
   // La configuration du backtest vue comme une LIGNE : elle porte sa fenêtre, donc
@@ -17643,7 +17727,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260920.8';
+  VERSION_APP = '260920.9';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été

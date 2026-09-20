@@ -3,12 +3,17 @@
 // testeur 316 trades contre 315 sans filtre) ; mécanisme, correctif et les deux sens du
 // refus MESURÉS DANS LE DÉPÔT, en appelant le générateur et le prédicat du produit.
 //
-// ANGLE MORT, EN TÊTE — elle confronte deux TEXTES : le libellé que la ligne porte
-// (`v.filtres`) et la ligne « Filtres générés » du robot produit. Elle ne prouve pas que
-// l'un des deux décrit JUSTE la mesure — seulement qu'ils ne peuvent plus se contredire.
-// Un libellé de ligne faux et un robot faux du même côté la laisseraient verte. C'est la
-// forme de `meme-horloge` : le défaut n'est dans aucun maillon pris seul, il est dans
-// leur désaccord — et c'est le désaccord qui a coûté le rejeu.
+// ANGLE MORT, EN TÊTE — le prédicat porte DEUX COUCHES, et aucune ne rattrape
+// l'aveuglement de l'autre :
+//   · la PRÉSENCE, contre `v.filtres` — la seule source indépendante de la
+//     reconstruction d'état, donc la seule qui voie un état EFFACÉ en amont. Son
+//     vocabulaire diffère de celui du robot (« Plus haut » contre « sous résistance »),
+//     donc elle ne peut comparer que « y en a-t-il ? » ;
+//   · le COMPTE, terme à terme sur les TYPES du moteur — elle voit une perte PARTIELLE,
+//     et elle ne peut PAS voir un état effacé, puisque ses deux côtés en descendent.
+// Ce qu'aucune des deux ne prouve : qu'un des deux côtés décrive JUSTE la mesure. Un
+// libellé faux et un robot faux du même côté les laisseraient vertes — la forme de
+// `meme-horloge`, où le défaut n'est que dans le désaccord.
 //
 // SECOND ANGLE MORT, celui du faux refus (règle 16) : la troisième issue — « la ligne
 // n'enregistre pas ses filtres » — refuse. `ligneBt()` et `basculerValide` posent tous
@@ -27,7 +32,15 @@ const SRC = readFileSync(new URL("../../Vuna.dc.html", import.meta.url), "utf8")
 const corps = SRC.slice(borne(SRC, "  filtresPerdus(v, txt) {"),
   borne(SRC, "\n  async exporterRobotBrut(v) {"));
 // eslint-disable-next-line no-new-func
-const filtresPerdus = new Function("return function " + corps + ";")();
+const brut = new Function("return function " + corps + ";")();
+/** Le prédicat lit `this.etatDeLigne` et `this.cfgCourante` : on lui donne un porteur
+ *  dont les deux sont pilotés par le cas, pour exercer la couche des TYPES sans monter
+ *  l'application entière. Ce que ça ne prouve pas — que les vrais appels soient faits —
+ *  est tenu par le troisième test, sur ce qui AGIT dans le corps. */
+const filtresPerdus = (v, txt, types) => brut.call({
+  etatDeLigne: () => ({}),
+  cfgCourante: () => (types === undefined ? { filtres: [] } : { filtres: (types || []).map((t) => ({ type: t })) }),
+}, v, txt);
 
 const ETAT_BASE = { btMtf: false, fPente: false, fRsi: false, fAdx: false, fNuage: false,
   fPivot: false, fZone: false, fMa: false, btDelai: 0, btFenDeb: 0, btFenFin: 0 };
@@ -41,6 +54,7 @@ function robot(etat) {
     stamp: "260920_1153", magic: 1234 });
 }
 const enTete = (txt) => (/Filtres générés\s*:\s*(.+?)\s*$/m.exec(txt) || [])[1];
+const types = (txt) => (/Types émis\s*:\s*(.+?)\s*$/m.exec(txt) || [])[1];
 
 test("un robot sans filtre ne descend pas sous une ligne qui en nomme un", () => {
   const nu = robot(SANS);
@@ -74,10 +88,35 @@ test("un robot sans filtre ne descend pas sous une ligne qui en nomme un", () =>
   assert.match(inverse, /Aucun filtre/, "le refus symétrique ne cite pas la ligne. Obtenu : " + inverse);
 
   // ————— LES DEUX ACCORDS NE REFUSENT RIEN (règle 16) —————
-  assert.equal(filtresPerdus({ filtres: "Plus haut D1" }, arme), "",
-    "faux refus sur le cas NORMAL : ligne filtrée, robot filtré.");
-  assert.equal(filtresPerdus({ filtres: "Aucun filtre" }, nu), "",
+  assert.equal(filtresPerdus({ filtres: "Plus haut D1" }, arme, ["sous_resistance"]), "",
+    "faux refus sur le cas NORMAL : ligne filtrée, robot filtré, mêmes types.");
+  assert.equal(filtresPerdus({ filtres: "Aucun filtre" }, nu, []), "",
     "faux refus sur le cas NORMAL : ligne sans filtre, robot sans filtre.");
+
+  // ————— LA PERTE PARTIELLE, QUE LA PRÉSENCE NE VOIT PAS —————
+  // Le défaut du 20/09 éteignait les neuf filtres d'un coup : la présence suffisait. La
+  // prochaine perte sera d'UN filtre, et les deux booléens vaudront « vrai » des deux
+  // côtés — « un désancrage PARTIEL est invisible à une prise qui compte zéro », sur un
+  // ensemble au lieu d'un zéro.
+  const troisPourUn = filtresPerdus({ filtres: "RSI D1 \u00b7 ADX D1 \u00b7 Plus haut D1" },
+    arme, ["rsi", "adx", "sous_resistance"]);
+  assert.ok(troisPourUn,
+    "une mesure à TROIS filtres et un robot qui n'en émet qu'UN s'accordent : la "
+    + "confrontation est restée un booléen sur une population.");
+  assert.match(troisPourUn, /MANQUE\s*:\s*adx, rsi/,
+    "le refus ne NOMME pas les types perdus. Obtenu : " + troisPourUn);
+
+  const enTrop = String(filtresPerdus({ filtres: "Plus haut D1" }, arme, []));
+  assert.match(enTrop, /EN TROP\s*:\s*sous_resistance/,
+    "un filtre émis que la mesure ne porte pas n'est pas nommé. Obtenu : " + enTrop);
+
+  // LA LIGNE MACHINE est ce qui rend le terme à terme possible : sans elle il ne reste
+  // que deux phrases françaises écrites dans deux vocabulaires.
+  assert.equal(types(arme), "sous_resistance",
+    "le robot ne déclare plus ses TYPES émis : les deux côtés redeviennent "
+    + "incomparables. Obtenu : " + JSON.stringify(types(arme)));
+  assert.equal(types(nu), "aucun",
+    "la ligne des types ne dit plus « aucun » sur un robot sans filtre.");
 
   // ————— LA TROISIÈME ISSUE : « je ne sais pas » n'est pas « aucun » —————
   const muet = filtresPerdus({}, nu);

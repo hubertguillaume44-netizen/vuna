@@ -225,7 +225,26 @@ export function genererMQ5(cfg, ctx = {}) {
   const dureeTxt = nb(etat.btDureeMax, 0) > 0
     ? nb(etat.btDureeMax, 0) + ' bougies H1' : 'aucune';
   const tests = [];
-  const resume = [];
+  // ————— UNE SOURCE, DEUX RENDUS : LE LIBELLÉ ET LE TYPE —————
+  //
+  // L'en-tête portait une phrase française — « sous résistance D1 20 (marge 1 %) » — et
+  // la ligne du portefeuille en portait une autre — « Plus haut D1 · … ». Deux rendus du
+  // MÊME fait, dans deux vocabulaires, donc **incomparables terme à terme**. La
+  // confrontation écrite le 20/09/2026 a dû se replier sur deux booléens « y a-t-il des
+  // filtres ? », et un booléen sur une population ne voit pas une perte PARTIELLE : une
+  // mesure à trois filtres et un robot qui n'en émet qu'un s'accordent.
+  //
+  // > Quand deux côtés ne sont pas comparables, on n'affaiblit pas la garde jusqu'à ce
+  // > qu'elle passe : on répare la COMPARABILITÉ. C'est la même sortie que « une source,
+  // > deux lecteurs », vue depuis le producteur.
+  //
+  // Le type est celui de `cfgCourante` — `sous_resistance`, `rsi`, `adx`… — c'est-à-dire
+  // le vocabulaire que le MOTEUR emploie, pas un troisième inventé ici. Il part dans
+  // l'en-tête sur sa propre ligne, et l'application compare des ensembles de types.
+  const emis = [];
+  const emet = (type, txt) => { emis.push({ type, txt }); };
+  const resume = { get length() { return emis.length; },
+    join: (sep) => emis.map((x) => x.txt).join(sep) };
 
   if (etat.btMtf) {
     const m = LIGNES[etat.ligneMtf] || 'EMA';
@@ -237,7 +256,7 @@ export function genererMQ5(cfg, ctx = {}) {
       if(c <= 0.0 || l <= 0.0) return false;
       if(${vente ? 'c >= l' : 'c <= l'}) { g_raison = StringFormat("tendance supérieure : clôture %s vs ligne %s", DoubleToString(c, _Digits), DoubleToString(l, _Digits)); return false; }
    }`);
-    resume.push('tendance ' + (etat.utMtf || 'D1') + ' ' + (etat.ligneMtf || 'ema') + ' ' + per);
+    emet('tendance_mtf', 'tendance ' + (etat.utMtf || 'D1') + ' ' + (etat.ligneMtf || 'ema') + ' ' + per);
   }
 
   if (etat.fRsi) {
@@ -250,7 +269,7 @@ export function genererMQ5(cfg, ctx = {}) {
       if(v < 0.0) return false;
       if(${vente ? 'v >= ' + seuil : 'v <= ' + seuil}) { g_raison = StringFormat("RSI %.1f", v); return false; }
    }`);
-    resume.push('RSI ' + (etat.utRsi || 'H1') + ' ' + per + (vente ? ' < ' : ' > ') + seuil);
+    emet('rsi', 'RSI ' + (etat.utRsi || 'H1') + ' ' + per + (vente ? ' < ' : ' > ') + seuil);
   }
 
   if (etat.fAdx) {
@@ -263,7 +282,7 @@ export function genererMQ5(cfg, ctx = {}) {
       if(v < 0.0) return false;
       if(v <= ${seuil}) { g_raison = StringFormat("ADX %.2f <= ${seuil}", v); return false; }
    }`);
-    resume.push('ADX ' + (etat.utAdx || 'H1') + '(' + per + ') > ' + seuil);
+    emet('adx', 'ADX ' + (etat.utAdx || 'H1') + '(' + per + ') > ' + seuil);
   }
 
   if (etat.fMa) {
@@ -275,7 +294,7 @@ export function genererMQ5(cfg, ctx = {}) {
       if(c <= 0.0 || m <= 0.0) return false;
       if(${vente ? 'c >= m' : 'c <= m'}) { g_raison = StringFormat("MM : clôture %s vs MM %s", DoubleToString(c, _Digits), DoubleToString(m, _Digits)); return false; }
    }`);
-    resume.push((vente ? 'sous' : 'au-dessus') + ' MM ' + (etat.utMa || 'D1') + ' ' + per);
+    emet('ma', (vente ? 'sous' : 'au-dessus') + ' MM ' + (etat.utMa || 'D1') + ' ' + per);
   }
 
   if (etat.fPente) {
@@ -289,7 +308,7 @@ export function genererMQ5(cfg, ctx = {}) {
       if(a <= 0.0 || b <= 0.0) return false;
       if(${vente ? 'a >= b' : 'a <= b'}) { g_raison = StringFormat("pente : %s vs %s", DoubleToString(a, _Digits), DoubleToString(b, _Digits)); return false; }
    }`);
-    resume.push('pente ' + (etat.utPente || 'H4') + ' recul ' + recul);
+    emet('pente', 'pente ' + (etat.utPente || 'H4') + ' recul ' + recul);
   }
 
   if (etat.fResist && !vente) {
@@ -307,7 +326,7 @@ export function genererMQ5(cfg, ctx = {}) {
       double seuil = plaf * ${marge};
       if(c >= seuil) { g_raison = StringFormat("sous résistance : clôture %s vs plafond %s", DoubleToString(c, _Digits), DoubleToString(seuil, _Digits)); return false; }
    }`);
-    resume.push('sous résistance ' + (etat.utResist || 'D1') + ' ' + n + ' (marge ' + mPct + ' %)');
+    emet('sous_resistance', 'sous résistance ' + (etat.utResist || 'D1') + ' ' + n + ' (marge ' + mPct + ' %)');
   }
 
   const signal = entree === 'CROISEMENT_OU_REBOND'
@@ -340,6 +359,7 @@ export function genererMQ5(cfg, ctx = {}) {
 //|  Sens            : ${vente ? 'VENTE à découvert' : 'ACHAT'}
 //|  Configuration   : ${esc(cfg.entree)} · ${esc(cfg.ligne)} ${periode} · stop ${sl} % · objectif ${rr} R
 //|  Filtres générés : ${resume.length ? esc(resume.join(' · ')) : 'aucun'}
+//|  Types émis      : ${emis.length ? esc(emis.map((x) => x.type).join(' ')) : 'aucun'}
 //|  Paliers         : ${paliers.length ? paliers.map((x) => x[0] + '→' + x[1]).join(' / ') : 'aucun'}
 //|  Plafond spread  : ${Number(facteurSpread) > 0 ? facteurSpread + ' × médiane des spreads d\'ouverture des ' + SPREAD_FENETRE + ' dernières H1' : 'aucun'}
 //|  Fenêtre entrée  : ${fenD === fenF ? 'aucune (toutes les heures)' : String(fenD).padStart(2, '0') + ' h → ' + String(fenF).padStart(2, '0') + ' h exclue, heures serveur'}
@@ -402,7 +422,7 @@ input ulong  InpMagic           = ${nb(ctx.magic, 20260901)};
 // quelle build l'avait émis. Le stamp d'export ne répond pas à cette question : il dit
 // QUAND on a exporté, pas DE QUOI. La marque est écrite ici dans la forme exacte que
 // « npm run app:version » cherche, donc ce fichier est daté comme les deux autres.
-#define VUNA_VERSION "260920.8"
+#define VUNA_VERSION "260920.9"
 //--- Configuration mesurée (ne pas modifier : le backtest ne serait plus valable)
 #define STOP_PCT        ${sl}
 #define OBJECTIF_R      ${rr}
