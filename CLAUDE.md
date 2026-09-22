@@ -6597,6 +6597,117 @@ validée et que le « × » de « À ranger » appelle déjà. *Une source, deux
 offerte. Deux mutations — le `sc-if` remis (0 pour 3 rangées) et le geste rebâti (3 → 4).
 Son angle mort est en tête : les états de ligne sont SEMÉS, pas découverts.
 
+### Et un correctif INATTEIGNABLE pour la population qui en a besoin
+
+**STATUT · CAUSE ÉTABLIE — symptôme RAPPORTÉ sur `260920.10`, mécanisme et correctif
+MESURÉS DANS LE DÉPÔT, au rendu, sur l'artefact livré.**
+
+Le chapitre ci-dessus ferme un piège à l'écran ; celui-ci en ferme un d'une strate plus
+haut, et il est plus sournois parce que **le défaut était déjà réparé**.
+
+`260920.9` avait posé la photo des réglages dans `ligneBt()`, donc **à la CRÉATION** d'une
+ligne. Une ligne déjà enregistrée sans photo n'avait aucun geste pour l'obtenir :
+`cleValide` la retrouve, `estValide` rend vrai, et le bouton du Backtest lisait « ✓ Au
+portefeuille ». Mesuré au rendu : **son clic RETIRE la ligne** — trois lignes retenues
+passent à deux. *Le seul geste offert détruisait ce qu'il fallait réparer.*
+
+> **Un défaut réparé dont la réparation n'est pas atteignable est indistinguable, pour
+> celui qui le subit, d'un défaut non réparé.** Et il est pire pour celui qui l'a
+> réparé : la garde est verte, le correctif est livré, et la population qui en a besoin
+> est exactement celle qui ne peut pas l'obtenir — les lignes saines n'en ont pas besoin.
+
+**Le geste manquant décide sur un RÉSULTAT** : non pas « cette ligne vient-elle du
+Backtest ? » — une intention, et une histoire que la ligne ne raconte pas — mais
+`etatDeLigne()._exact`, le prédicat que `basculerValide` emploie déjà pour décider de
+graver une photo. Quand il est faux, le bouton cesse d'être un retrait et devient
+« Réenregistrer cette mesure ». **Rien n'est perdu** : le retrait vit sur la rangée du
+portefeuille, sur chaque onglet, depuis le correctif de la veille — *c'est lui qui rend
+cette réaffectation possible.*
+
+#### `cleValide` identifie une ligne ; elle ne décrit pas sa configuration
+
+Sept champs — symbole, entrée, ligne, période, stop, R/R, sens — quand `REGLAGES` en
+compte **soixante-cinq**. Deux configurations de même clé peuvent différer sur leurs
+filtres, leur sécurisation, leur unité de décision. Écraser une photo sur la foi de la
+clé remplacerait une mesure par un état plausible : exactement ce que la note de
+`ligneBt()` refuse pour les neuf appelants de scan.
+
+L'écrasement est donc borné par une **confrontation de deux sources indépendantes** — le
+libellé que la ligne porte (`v.filtres`, posé à sa création, relu dans l'historique :
+depuis le 5 septembre) contre celui que le panneau produit. Trois issues, mesurées :
+
+| | ce qui se passe |
+|---|---|
+| les deux libellés s'accordent | la photo est posée, **en place** — le compte des lignes et la place dans les portefeuilles ne bougent pas |
+| ils divergent | refus, **en citant les deux** |
+| la ligne n'a pas de libellé | refus, et la destruction-recréation est **NOMMÉE** — c'est le seul cas où rien ne peut confronter |
+
+**Le remplacement est EN PLACE, et c'est la partie qu'un retrait-puis-rangement aurait
+cassée** : `basculerValide` sort l'instrument des portefeuilles quand c'est sa dernière
+configuration. Deux appels successifs auraient rendu la ligne à « À ranger » en perdant
+sa place, et le `setState` du premier n'aurait pas été lu par le second.
+
+#### La photo est une SECONDE SOURCE, et `cfgDeLigne` n'en lisait qu'une
+
+Le geste posait la photo et la rangée disait toujours « configuration → introuvable ».
+`cfgDeLigne` ne savait lire que la table des variantes d'un scan, retrouvée par
+`r.filtre` — qu'une ligne née dans le Backtest n'a pas et n'aura jamais. Or `_reg` EST sa
+configuration : c'est par là que le refus d'export et le prédicat W1 la relisent déjà.
+
+Mesuré au rendu, sur la rangée du portefeuille : « configuration introuvable » devient
+**`2023.09.13` / `2026.09.11`**, les deux dates au format du testeur.
+
+> **Un correctif qui rend une valeur ne sert à rien si le lecteur de cette valeur ne sait
+> pas qu'elle existe.** La photo était posée, juste, relue par deux prédicats — et le
+> producteur de l'écran bloquant interrogeait une source qui n'en avait jamais eu.
+
+##### ET LE REPLI A D'ABORD ÉTÉ POSÉ DANS `cfgDeLigne` — la suite l'a refusé
+
+Premier jet : les quatre points de sortie de `cfgDeLigne` retombaient sur la photo. La
+suite est tombée sur `reprise-fidele`, et elle avait raison.
+
+`repriseEcart` compare **ce qui va tourner** — `cfgCourante` sur l'état résultant, donc
+sur la photo — à **ce que la ligne ÉTAIT**, `cfgDeLigne`. Faire lire la photo au second
+côté rend les deux identiques.
+
+> **Un accord qui ne peut pas échouer ne mesure rien** — l'énoncé était déjà écrit, au
+> chapitre de la prise circulaire, et il vient d'attraper une source de SECOURS. Ce n'est
+> pas la garde qui était dérivée de son sujet : c'est le produit qui allait faire
+> coïncider deux dérivées d'un même fait, et la garde écrite contre la reprise muette
+> serait devenue vacue en affirmant « Configuration restaurée à l'identique ».
+
+D'où la forme livrée, et l'énoncé qu'elle ajoute :
+
+> **Deux lecteurs d'une même fonction peuvent poser deux questions différentes**, et une
+> source de secours qui sert la première rend la seconde vacue. Le repli se pose chez
+> l'APPELANT dont la question l'autorise — ici `pfTrades`, qui demande « quelle
+> configuration MESURER » —, jamais dans la fonction partagée, où l'autre appelant
+> demande « qu'était cette ligne ».
+
+La garde compte donc **un** appel à `cfgParPhoto`, pas deux, et un lecteur de plus doit
+prouver qu'il pose la première question. *C'est la suite complète qui a tranché, pas une
+relecture : la garde neuve était verte des deux côtés.*
+
+#### Et la fabrique d'une ligne validée a dû devenir une fonction
+
+Le second geste devait produire le MÊME objet de trente champs que `basculerValide` pose
+en ligne. Recopié, il aurait divergé à la première colonne qu'on oublie — la figure de
+`deposes`, appliquée à un objet. `ligneValidee(sym, cfg)` est cette fabrique, et la garde
+**compte ses lecteurs** : deux, pas trois.
+
+`reenregistrer-une-ligne-muette.test.mjs` mesure les trois issues au rendu, plus le compte
+des lignes, la place dans les portefeuilles et les deux dates de la rangée. Trois
+mutations ; la troisième a d'abord mordu la PRISE de l'autre test — un compte de replis —
+au lieu de l'assertion visée, et a été refaite pour n'éteindre que le chemin (`&& 0` posé
+à côté du motif, qui reste). *Une mutation rouge ne prouve pas que la bonne assertion a
+mordu.*
+
+**Et le compte de ces replis a été écrit DEUX FOIS de mémoire, dans la garde qui le
+mesure** — 3 puis 2, quand la commande rendait 4 puis 1. Deux appositions chiffrées dans
+le fichier qui les interdit, et les deux fois c'est la garde qui a compté, pas son
+auteur. *Le geste qui ferme ça est celui qui est écrit depuis le début : poser la
+commande avant le chiffre.*
+
 ## La sécurisation n'est pas un filtre, donc elle n'était pas dans le compte
 
 **STATUT · CAUSE ÉTABLIE, MESURÉE DANS LE DÉPÔT.** `cfgCourante` rend trois

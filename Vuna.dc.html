@@ -8558,6 +8558,121 @@ class Component extends DCLogic {
         + 'n\u2019est plus en mémoire : le détail est dans le fichier de diagnostic.' });
     }
   }
+  // ————— UNE LIGNE VALIDÉE A UNE SEULE FABRIQUE —————
+  //
+  // `basculerValide` la posait en ligne, dans son littéral de tableau. Le jour où un
+  // second geste a eu besoin de produire la même chose — réenregistrer la mesure d'une
+  // ligne qui ne sait plus se décrire —, la recopier aurait donné deux versions d'un
+  // objet de trente champs, divergentes à la première qu'on oublie. C'est la figure de
+  // `deposes`, appliquée à un objet : une source, deux lecteurs.
+  ligneValidee(sym, cfg) {
+    return { sym,
+      periode: cfg && cfg.periode, sl: cfg && cfg.sl, rr: cfg && cfg.rr,
+      entree: cfg && cfg.entree, ligne: cfg && cfg.ligne,
+      n: cfg && cfg.n, total: cfg && cfg.total, rAn: cfg && cfg.rAn,
+      dd: cfg && cfg.dd, positifs: cfg && cfg.positifs, segTotal: cfg && cfg.segTotal,
+      pf: cfg && cfg.pf, oos: cfg && cfg.oos, nuits: cfg && cfg.nuits,
+      winRate: cfg && cfg.winRate,
+      // le sens : un robot exporté depuis une ligne sans sens partait toujours à l'achat
+      sens: (cfg && cfg.sens) || 'achat',
+      // sans la variante, deux configurations aux mêmes réglages sont indiscernables
+      filtre: cfg && cfg.filtre, filtreNom: cfg && cfg.filtreNom,
+      filtres: (cfg && cfg.filtres) || this.filtresTexte(this.cfgCourante(sym)),
+      secu: this.secuDeLigne(cfg) || this.etiqSecu(this.state),
+      // verdict figé au moment de la validation : les mesures qui le fondent
+      // (tenue hors échantillon, espérance) ne sont pas toutes reportées ici
+      ...(() => { const w = cfg && cfg.n !== undefined ? this.verdict(cfg) : null;
+        return w ? { etat: w.label, etatTag: w.tag, etatMotif: w.motif, etatAide: w.motifAide } : {}; })(),
+      ut: this.state.ut, sid: cfg && cfg._sid, date: new Date().toISOString(),
+      // La fenêtre de mesure, figée avec la ligne : le scan d'origine peut être
+      // supprimé, l'étiquette doit rester juste. Une ligne validée avant cette
+      // version n'en porte pas et vaut « tout l'historique ».
+      ...(() => { const f = this.fenetreDeLigne({ ...(cfg || {}), sym });
+        return f.complete ? {} : { fen: this.fenPlate(f) }; })(),
+      // règle du moteur qui a produit ces chiffres, ET version de l'application qui
+      // les a mesurés. Sans la première, une ligne mesurée sous l'ancienne règle
+      // s'affichait à côté d'un backtest recalculé sous la nouvelle, et partait telle
+      // quelle dans l'en-tête du robot exporté ; sans la seconde, un défaut de moteur
+      // refermé ne se date pas. QUATRIÈME site d'estampille, et c'est la garde qui
+      // l'a trouvé : trois avaient été convertis à la main, celui-ci — le seul qui
+      // fabrique une ligne VALIDÉE — avait été oublié.
+      ...this.marqueMesure(),
+      // La photo des réglages : ce qui permet de rouvrir la ligne à l'identique dans
+      // le Backtest et d'exporter le robot, même si le scan d'origine est supprimé.
+      // Figée SEULEMENT si la variante a vraiment été retrouvée : sinon on graverait
+      // un état tous filtres éteints en le présentant comme fidèle. Sans photo, la
+      // relecture repart de la recherche en archives, qui dit ce qu'elle n'a pas trouvé.
+      ...(() => {
+        const e = this.etatDeLigne({ ...(cfg || {}), _sid: cfg && cfg._sid });
+        return (e && e._exact) ? { _reg: this.snapshotReglages(e) } : {};
+      })() };
+  }
+  // ————— UNE LIGNE QUI NE SAIT PLUS SE DÉCRIRE DOIT POUVOIR ÊTRE RÉENREGISTRÉE —————
+  //
+  // Défaut MESURÉ au rendu sur `260920.10` : la photo de `ligneBt()` ne se pose qu'à la
+  // CRÉATION. Une ligne déjà enregistrée sans photo — née dans le Backtest avant
+  // `260920.9` — n'avait aucun geste pour l'obtenir : `cleValide` la retrouve, donc le
+  // bouton de rangement lisait « ✓ Au portefeuille » et son clic la RETIRAIT (mesuré :
+  // trois lignes retenues passent à deux). Le correctif était donc INATTEIGNABLE pour
+  // la seule population qui en avait besoin.
+  //
+  // > Un défaut réparé dont la réparation n'est pas atteignable est indistinguable,
+  // > pour celui qui le subit, d'un défaut non réparé.
+  //
+  // LE GESTE DÉCIDE SUR UN RÉSULTAT (règle 1) : non pas « cette ligne vient-elle du
+  // Backtest ? » — une intention, et une histoire que la ligne ne raconte pas — mais
+  // « son état se reconstitue-t-il fidèlement ? », c'est-à-dire `etatDeLigne()._exact`,
+  // le même prédicat que `basculerValide` emploie pour décider de graver une photo.
+  //
+  // ET L'ÉCRASEMENT EST BORNÉ PAR UNE CONFRONTATION, pas par `cleValide`. La clé ne
+  // porte que SEPT champs — symbole, entrée, ligne, période, stop, R/R, sens — quand
+  // `REGLAGES` en compte soixante-cinq : deux configurations de même clé peuvent
+  // différer sur leurs filtres, leur sécurisation, leur unité. Écraser sur la foi de la
+  // clé seule remplacerait une photo fidèle par un état plausible — exactement ce que
+  // la note de `ligneBt()` refuse pour les neuf appelants de scan.
+  //
+  // On compare donc ce que la LIGNE annonce (`v.filtres`, le libellé qu'elle porte
+  // depuis le 5 septembre) à ce que le PANNEAU produit — deux sources indépendantes,
+  // la forme de `filtresPerdus`. Elles diffèrent → on refuse en citant les deux.
+  //
+  // ANGLE MORT, ÉCRIT ICI : une ligne qui n'enregistre PAS ses filtres n'a rien à
+  // confronter. On ne l'écrase pas en silence — on refuse, et on nomme la seule sortie
+  // qui reste, qui est de la retirer et de la ranger à nouveau. C'est le cas où la
+  // destruction-recréation est la réponse, et elle est DITE.
+  reenregistrerLigne() {
+    const l = this.ligneBt();
+    if (!l) return false;
+    const k = this.cleValide(l);
+    const lues = this.normValides(this.state.valides);
+    const v = lues.find((x) => this.cleValide(x) === k);
+    if (!v) return false;
+    const dit = String(v.filtres || '').trim();
+    const mes = String(l.filtres || '').trim();
+    if (!dit) {
+      this.setState({ hasardMsg: 'Cette ligne n\u2019enregistre pas les filtres de sa mesure : '
+        + 'rien ne peut confronter ce que le panneau affiche à ce qu\u2019elle a mesuré, et '
+        + 'la réenregistrer graverait un état plausible. Retirez-la depuis la page '
+        + 'Portefeuille, puis rangez-la à nouveau depuis ici.' });
+      return false;
+    }
+    if (mes && dit !== mes) {
+      this.setState({ hasardMsg: 'Réglages différents de ceux de la ligne enregistrée : '
+        + 'elle porte « ' + dit + ' », le panneau mesure « ' + mes + ' ». Le symbole, '
+        + 'l\u2019entrée, la ligne, la période, le stop et le R/R suffisent à la retrouver, '
+        + 'pas à décrire sa configuration. Rétablissez ses filtres avant de réenregistrer, '
+        + 'ou retirez-la et rangez celle-ci à sa place.' });
+      return false;
+    }
+    // Remplacement EN PLACE : sa place dans les portefeuilles ne bouge pas. Un retrait
+    // suivi d'un rangement l'aurait perdue — `basculerValide` sort l'instrument des
+    // portefeuilles quand c'est sa dernière configuration.
+    const suite = lues.map((x) => (this.cleValide(x) === k ? this.ligneValidee(l.sym, l) : x));
+    this.setState({ valides: suite,
+      hasardMsg: 'Mesure réenregistrée pour ' + this.nomComplet(l.sym)
+        + ' : la ligne porte désormais la photo de ses réglages, et son robot peut être exporté.' },
+    () => this.ecrirePf(this.state.pfs, this.state.favoris, suite));
+    return true;
+  }
   basculerValide(sym, cfg) {
     const l = this.normValides(this.state.valides);
     const k = this.cleValide({ sym, ...(cfg || {}) });
@@ -8594,46 +8709,7 @@ class Component extends DCLogic {
       }
     }
     const suite = dedans ? l.filter((x) => this.cleValide(x) !== k)
-      : [...l, { sym,
-          periode: cfg && cfg.periode, sl: cfg && cfg.sl, rr: cfg && cfg.rr,
-          entree: cfg && cfg.entree, ligne: cfg && cfg.ligne,
-          n: cfg && cfg.n, total: cfg && cfg.total, rAn: cfg && cfg.rAn,
-          dd: cfg && cfg.dd, positifs: cfg && cfg.positifs, segTotal: cfg && cfg.segTotal,
-          pf: cfg && cfg.pf, oos: cfg && cfg.oos, nuits: cfg && cfg.nuits,
-          winRate: cfg && cfg.winRate,
-          // le sens : un robot exporté depuis une ligne sans sens partait toujours à l'achat
-          sens: (cfg && cfg.sens) || 'achat',
-          // sans la variante, deux configurations aux mêmes réglages sont indiscernables
-          filtre: cfg && cfg.filtre, filtreNom: cfg && cfg.filtreNom,
-          filtres: (cfg && cfg.filtres) || this.filtresTexte(this.cfgCourante(sym)),
-          secu: this.secuDeLigne(cfg) || this.etiqSecu(this.state),
-          // verdict figé au moment de la validation : les mesures qui le fondent
-          // (tenue hors échantillon, espérance) ne sont pas toutes reportées ici
-          ...(() => { const w = cfg && cfg.n !== undefined ? this.verdict(cfg) : null;
-            return w ? { etat: w.label, etatTag: w.tag, etatMotif: w.motif, etatAide: w.motifAide } : {}; })(),
-          ut: this.state.ut, sid: cfg && cfg._sid, date: new Date().toISOString(),
-          // La fenêtre de mesure, figée avec la ligne : le scan d'origine peut être
-          // supprimé, l'étiquette doit rester juste. Une ligne validée avant cette
-          // version n'en porte pas et vaut « tout l'historique ».
-          ...(() => { const f = this.fenetreDeLigne({ ...(cfg || {}), sym });
-            return f.complete ? {} : { fen: this.fenPlate(f) }; })(),
-          // règle du moteur qui a produit ces chiffres, ET version de l'application qui
-          // les a mesurés. Sans la première, une ligne mesurée sous l'ancienne règle
-          // s'affichait à côté d'un backtest recalculé sous la nouvelle, et partait telle
-          // quelle dans l'en-tête du robot exporté ; sans la seconde, un défaut de moteur
-          // refermé ne se date pas. QUATRIÈME site d'estampille, et c'est la garde qui
-          // l'a trouvé : trois avaient été convertis à la main, celui-ci — le seul qui
-          // fabrique une ligne VALIDÉE — avait été oublié.
-          ...this.marqueMesure(),
-          // La photo des réglages : ce qui permet de rouvrir la ligne à l'identique dans
-          // le Backtest et d'exporter le robot, même si le scan d'origine est supprimé.
-          // Figée SEULEMENT si la variante a vraiment été retrouvée : sinon on graverait
-          // un état tous filtres éteints en le présentant comme fidèle. Sans photo, la
-          // relecture repart de la recherche en archives, qui dit ce qu'elle n'a pas trouvé.
-          ...(() => {
-            const e = this.etatDeLigne({ ...(cfg || {}), _sid: cfg && cfg._sid });
-            return (e && e._exact) ? { _reg: this.snapshotReglages(e) } : {};
-          })() }];
+      : [...l, this.ligneValidee(sym, cfg)];
     // plus aucune configuration validée pour ce symbole : il quitte les portefeuilles
     const resteSym = suite.some((x) => (x.ticker || x.sym) === sym);
     const pfs = (dedans && !resteSym)
@@ -11061,7 +11137,12 @@ GROUPES = {
       const nom = x.nom || this.nomComplet(sym);
       const df = this.serieH1(sym);
       if (!df || !df.n) return { nom, sym, trades: null, motif: 'bougies non chargées' };
-      const cfg = this.cfgDeLigne(v);
+      // la table des variantes d'abord ; la photo des réglages à défaut. Ici la question
+      // est « quelle configuration mesurer », pas « qu'était cette ligne » : une ligne
+      // née dans le Backtest n'a pas de variante et n'en aura jamais, et sa photo EST sa
+      // configuration. Voir la note de `cfgParPhoto` pour les lecteurs qui ne peuvent
+      // PAS l'autoriser.
+      const cfg = this.cfgDeLigne(v) || this.cfgParPhoto(v);
       if (!cfg) return { nom, sym, trades: null, motif: 'configuration introuvable' };
       const sig = JSON.stringify(cfg) + '|' + (v.ut || this.state.ut)
         + '|' + this.facteurSpread() + '|' + this.stopMiniDe(sym);
@@ -16857,6 +16938,48 @@ GROUPES = {
   cleCfgVar(filtre, sym, entree, ligne) {
     return filtre + '|' + sym + '|' + (entree || '') + '|' + (ligne || '');
   }
+  // ————— UNE PHOTO FIDÈLE EST UNE SECONDE SOURCE, ET ELLE MANQUAIT ICI —————
+  //
+  // Cette fonction ne savait lire qu'UNE source : la table des variantes d'un scan,
+  // retrouvée par `r.filtre`. Une ligne née dans le Backtest n'a pas de variante et n'en
+  // aura jamais — elle rendait donc `null` pour toujours, c'est-à-dire « configuration
+  // → introuvable » sur la colonne des deux dates, « non vérifié — période de mesure non
+  // lisible » sur la réserve, et aucun trade mesurable pour les quatre calculs.
+  //
+  // Or `_reg` EST la configuration de cette ligne, depuis `260920.9` : c'est même par
+  // là que le refus d'export et le prédicat W1 la relisent. Le repli décide sur un
+  // RÉSULTAT — `etatDeLigne()._exact`, la photo est-elle fidèle — et jamais sur la
+  // provenance de la ligne.
+  //
+  // ————— ET IL NE VIT PAS DANS `cfgDeLigne`, CE QUI A ÉTÉ MESURÉ —————
+  //
+  // Premier jet : le repli était posé aux quatre sorties de `cfgDeLigne`. La suite est
+  // tombée sur `reprise-fidele`, et elle avait raison. `repriseEcart` compare CE QUI VA
+  // TOURNER — `cfgCourante` sur l'état résultant, donc sur la photo — à CE QUE LA LIGNE
+  // ÉTAIT, `cfgDeLigne`. Faire lire la photo au second côté rend les deux identiques :
+  // *un accord qui ne peut pas échouer ne mesure rien.* La garde écrite contre la
+  // reprise muette serait devenue vacue, et « Configuration restaurée à l'identique »
+  // aurait été affirmé sur une ligne dont plus rien ne vérifiait la restitution.
+  //
+  // `cfgDeLigne` reste donc la source INDÉPENDANTE — la table des variantes du scan —
+  // et le repli vit chez le seul lecteur qui demande « quelle configuration MESURER »
+  // plutôt que « qu'était cette ligne » : `pfTrades`, la porte unique des quatre
+  // calculs, de la colonne des deux dates et de la réserve de rangée.
+  //
+  // > **Deux lecteurs d'une même fonction peuvent poser deux questions différentes**, et
+  // > une source de secours qui sert la première rend la seconde vacue. Le repli se pose
+  // > chez l'APPELANT dont la question l'autorise, jamais dans la fonction partagée.
+  cfgParPhoto(r) {
+    const e = this.etatDeLigne({ ...(r || {}), _sid: (r && (r._sid || r.sid)) });
+    if (!e || !e._exact) return null;
+    const periode = Number(r.periode), sl = Number(r.sl), rr = Number(r.rr);
+    if (!Number.isFinite(periode) || !Number.isFinite(sl) || !Number.isFinite(rr)) return null;
+    try {
+      const c = this.cfgCourante(r.ticker || r.sym, periode, sl, rr, e,
+        { entree: r.entree, ligne: r.ligne });
+      return (c && c.entree && c.sortie) ? c : null;
+    } catch (err) { return null; }
+  }
   cfgDeLigne(r) {
     if (!r || !r.filtre || !r.sym) return null;
     // la clé complète d'abord ; l'ancienne ensuite, pour les scans archivés avant
@@ -17727,7 +17850,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260920.10';
+  VERSION_APP = '260922';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
@@ -26256,6 +26379,30 @@ GROUPES = {
         const ef = this.etatFenetre(l);
         const v = this.verdict(l);
         if (dedans) {
+          // ————— QUAND LA LIGNE NE SAIT PLUS SE DÉCRIRE, LE GESTE N'EST PAS LE RETRAIT —————
+          //
+          // Une ligne retenue dont l'état ne se reconstitue pas — pas de photo, pas
+          // d'archive retrouvée — exporte un robot bâti sur `etatDeReference`, tous
+          // filtres éteints. Le bouton lisait « ✓ Au portefeuille » et la RETIRAIT :
+          // le seul geste offert détruisait ce qu'il fallait réparer.
+          //
+          // Le prédicat est un RÉSULTAT, `etatDeLigne()._exact`, et non « d'où vient
+          // cette ligne ». Et rien n'est perdu : le retrait vit sur la rangée du
+          // portefeuille, sur chaque onglet, depuis `260920.10`.
+          const vL = this.normValides(this.state.valides)
+            .find((x) => this.cleValide(x) === this.cleValide(l));
+          const muette = !!vL && !((this.etatDeLigne({ ...vL, _sid: vL._sid || vL.sid }) || {})._exact);
+          if (muette) {
+            return { btRangerTxt: 'Réenregistrer cette mesure', btRangerOff: false,
+              btRangerAide: 'Cette ligne est rangée, mais sa configuration ne se '
+                + 'retrouve pas : son robot serait bâti sur des réglages qui ne sont pas '
+                + 'ceux qu\u2019elle a mesurés. Ce geste lui donne la photo des réglages '
+                + 'affichés, sans toucher à sa place dans les portefeuilles. Les filtres '
+                + 'du panneau doivent être ceux qu\u2019elle annonce — sinon le geste '
+                + 'refuse et cite les deux.',
+              btRangerFond: 'var(--color-bg)', btRangerEncre: 'var(--color-accent-900)', btRangerVoile: '1',
+              btRanger: () => this.reenregistrerLigne() };
+          }
           return { btRangerTxt: '\u2713 Au portefeuille', btRangerOff: false,
             btRangerAide: 'Cette configuration est rangée. Cliquez pour l\u2019en retirer.',
             btRangerFond: 'var(--color-bg)', btRangerEncre: 'var(--color-accent-900)', btRangerVoile: '1',
