@@ -202,6 +202,27 @@ déclencheur n'est plus un événement que personne ne peut constater : c'est la
 elle-même qui le dit à celui qui la regarde. *Le pourquoi reste dans CLAUDE.md, « L'unité
 d'un filtre est INERTE dans le moteur » ; ce qui est parti d'ici, c'est le rappel.*
 
+**g. UN BANC QUI POSE UNE VALEUR LÀ OÙ LE PRODUIT EN OFFRE PLUSIEURS choisit sa
+population.** Question de recensement, non traitée — et elle est écrite par son
+DÉCLENCHEUR, pas par une date : *avant d'écrire un banc de rendu, demander si le produit
+offre plus d'un état du champ que le semis fixe.*
+
+Le cas fondateur est mesuré, `260920.9` : `grille-compte-ses-cellules` posait
+`pfOnglet: 1` et rendait vert, pendant que l'onglet **0** — celui qui s'ouvre par défaut —
+portait **sept cellules pour huit pistes**. La garde existait, son invariant était juste,
+et le défaut vivait dessous parce que sa fixture avait choisi l'onglet où la cellule est
+là. Un `sc-if` sur un onglet non exercé est invisible à une garde qui n'en visite qu'un.
+
+C'est la règle 7 appliquée au SEMIS plutôt qu'au périmètre de lecture : le périmètre d'un
+banc de rendu n'est pas seulement la liste des fichiers ou des vues qu'il parcourt, c'est
+aussi **l'état qu'il pose**. `VUES` a déjà fermé la moitié « quels écrans » ; celle-ci est
+la moitié « dans quel état ».
+
+**La population n'est pas comptée, et c'est délibéré** — la compter serait déjà traiter la
+question. Ce qui est posé ici, c'est le geste et son cas fondateur ; le recensement, quand
+il aura lieu, dira combien de bancs sont concernés et lesquels méritent d'exercer leurs
+états plutôt qu'un seul.
+
 ## Ce qui est acquis et ne doit pas régresser
 
 **Aucune configuration n'est retenue à ce jour.** Les six ci-dessous ont été mesurées dans
