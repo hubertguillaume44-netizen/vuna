@@ -1,6 +1,58 @@
 # Rejouer « Sous résistance » dans MetaTrader 5 — mode d'emploi
 
-*À faire une fois. Compter ≈ 30 minutes, dont 25 d'attente.*
+*Compter ≈ 30 minutes, dont 25 d'attente.*
+
+---
+
+## ✅ CE REJEU A EU LIEU — 22 septembre 2026
+
+**Il n'est plus à faire**, et ce qui suit reste écrit pour qui voudrait le refaire sur un
+autre instrument. Le résultat, d'abord, pour qu'on ne le cherche pas à la fin :
+
+| | |
+|---|---|
+| instrument | **GOLD** chez FxPro, H1, 1 minute OHLC |
+| période | 2020.01.01 → 2026.09.08 · 40 164 barres · qualité 99 % · 46 s |
+| N-avec (Vuna) | **237** — bande de réussite [211 ; 263] |
+| N-sans (Vuna) | **315** — bande de panne [280 ; 350] |
+| N-robot | **235** — dans la première, hors de la seconde ✅ |
+| séparation | **24,8 %**, au-dessus du seuil calculé de 19,8 % |
+
+Facteur de profit 1,38 contre 1,46 · réussite 50,21 % contre 51,5 % · 235 longues,
+0 courte. L'écart vaut **0,84 %** — deux trades sur 237, soit neuf à treize fois sous le
+bruit de l'arbitre.
+
+### Ce que ça établit, et la borne
+
+> **Le rejeu ferme la PRÉSENCE ; la garde ferme la JUSTESSE.**
+
+*La présence* : le filtre agit dans le robot réel, et son effet coïncide avec la mesure.
+C'est ce que ce mode d'emploi cherchait, et c'est acquis.
+
+*La justesse* — fenêtre, marge, unité — **n'est pas** ce que ce rejeu mesure, et ce n'est
+pas une prudence de langage : le dépôt a mesuré qu'un port décalé d'un seau rend 0,4 à
+1,2 % d'écart, et une marge fausse 4,2 %. **0,84 % tombe dedans.** Un rejeu ne peut donc
+pas distinguer un port juste d'un port décalé, aujourd'hui ni jamais — cette moitié est
+tenue par `scripts/mt5/sous-resistance-portee.test.mjs`, qui compare bougie par bougie.
+
+Écrire « port validé » promettrait les deux. Les deux échelles ensemble sont la seule
+couverture honnête, et elles se disent séparément.
+
+### Et il a fallu trois lancements — les deux premiers ont servi
+
+| lancement | résultat | ce qu'il a trouvé |
+|---|---|---|
+| `260920_1153` | 316 pour 237 attendus | l'export émettait « Filtres générés : aucun » sous une mesure filtrée |
+| `260922_1655` | 102 pour 112 attendus | un réenregistrement avait ajouté un filtre **en silence** : la mesure passait de 237 à 112, et l'agrégat du portefeuille de 86,4 à 96,3 R |
+| `260922_1719` | **235** pour 237 attendus | ✅ |
+
+**Aucun des deux échecs ne portait sur le port.** Les deux portaient sur ce qui FABRIQUE
+l'entrée du port, et aucune garde dérivée du texte émis ne pouvait les voir : le texte
+émis était cohérent avec l'état qu'il avait reçu.
+
+**Et le second n'aurait pas été trouvé sans l'en-tête du robot.** « Mesuré : N trades »
+est la seule ligne qui ait dit que le fichier n'était pas celui de la ligne. Elle reste,
+et c'est l'argument pour confronter ce `N` au compte que la ligne porte.
 
 ---
 

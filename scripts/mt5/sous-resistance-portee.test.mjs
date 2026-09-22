@@ -1,8 +1,18 @@
 // STATUT · PORT MESURÉ DANS LE DÉPÔT — bougie par bougie contre `filtreSousResistance`,
-// et chaque décision de la simulation RELUE dans le corps MQL5 émis ; NON CONFRONTÉ À UNE
-// EXÉCUTION RÉELLE, et le rejeu qui fermerait l'autre échelle d'erreur est décrit en pied
-// de fichier, avec sa prédiction. AUCUN REJEU MT5 — et ce n'est pas un manque, c'est une MESURE qui dit que le rejeu ne
-// pouvait pas servir de preuve ici. Voir « ce que l'arbitre peut trancher », en tête.
+// et chaque décision de la simulation RELUE dans le corps MQL5 émis ; REJEU MT5 EU LIEU,
+// RAPPORTÉ — GOLD chez FxPro, 2020.01.01 → 2026.09.08, 235 trades pour 237 mesurés, dans
+// la bande de réussite. Aucun journal n'est entré dans `scripts/mt5/`.
+//
+// LE PARTAGE, ET IL EST LA SEULE FORME HONNÊTE DU VERDICT :
+//
+//   le REJEU ferme la PRÉSENCE  — le filtre agit dans le robot réel
+//   la GARDE ferme la JUSTESSE  — la fenêtre, la marge et l'unité sont les bonnes
+//
+// Écrire « port validé » promettrait les deux, et c'est ce fichier lui-même qui l'interdit :
+// il a MESURÉ qu'un port faux de fenêtre (±1 seau), de marge (0,9 % contre 1 %) ou d'unité
+// rend 0,4 à 4,2 % d'écart, et l'écart observé — 0,84 % — tombe DEDANS. Le rejeu ne
+// distingue donc pas la justesse des paramètres, et ne le pourra jamais. Voir « ce que
+// l'arbitre peut trancher », en tête, et le pied de fichier pour ce que le rejeu a rendu.
 //
 // ————— CE QUE L'ARBITRE PEUT TRANCHER, ET CE QU'IL NE PEUT PAS —————
 //
@@ -356,10 +366,31 @@ test("retirer ou garder le seau en formation rend le MÊME masque — mesuré, p
 // sont sous le bruit. Il ne remplace donc AUCUNE des gardes ci-dessus — il ferme l'autre
 // bout, et les deux échelles ensemble sont la seule couverture honnête.
 //
-// TANT QUE CE REJEU N'A PAS EU LIEU, LE STATUT DU PORT EST : fidèle au texte émis,
-// mesuré bougie par bougie contre le moteur, et NON CONFRONTÉ À UNE EXÉCUTION RÉELLE.
-// C'est écrit ici parce que c'est ce que l'utilisateur doit savoir avant d'installer le
-// robot, et parce qu'un jour où le rejeu aura eu lieu, cette note dit quoi remplacer.
+// ————— CE QUE LE REJEU A RENDU (RAPPORTÉ, 22/09/2026) —————
+//
+// Cette note disait « un jour où le rejeu aura eu lieu, elle dit quoi remplacer ». Il a eu
+// lieu. GOLD chez FxPro, H1, 1 minute OHLC, 2020.01.01 → 2026.09.08, 40 164 barres,
+// qualité 99 %, 46 s. Robot `Vuna_C1_GOLD_Achat_mediane_7_SL0p7_RR1p5_260922_1719`,
+// en-tête relu AVANT le lancement : « Filtres générés : sous résistance D1 20 (marge 1 %)
+// · Types émis : sous_resistance · Mesuré : 237 trades ».
+//
+//   N-avec (Vuna)   237      bande de réussite  [211 ; 263]
+//   N-sans (Vuna)   315      bande de panne     [280 ; 350]
+//   N-robot         235      ← dans la première, hors de la seconde
+//   séparation      24,8 %   au-dessus du seuil calculé de 19,8 %
+//
+// L'écart vaut 0,84 % (2 trades sur 237). Compté plutôt que juré : c'est NEUF À TREIZE
+// fois sous le bruit de l'arbitre (7,5 % et 11,0 %), et non vingt — le premier rapport
+// portait « vingt fois », une apposition chiffrée de plus, dans le sens qui amplifie.
+//
+// CE QUE ÇA FERME : la présence. Le mécanisme du filtre agit dans le robot réel et son
+// effet coïncide avec la mesure. La sortie nº 2 du chantier — « le port n'a jamais été
+// confronté à une exécution » — n'existe plus.
+//
+// CE QUE ÇA NE FERME PAS, et c'est la mesure ci-dessus qui le dit : la justesse des
+// paramètres. 0,84 % est À L'INTÉRIEUR de la bande que les mutations rendent (0,4 % à
+// 4,2 %), donc ce rejeu ne distingue pas un port juste d'un port décalé d'un seau. Cette
+// moitié reste tenue par les gardes de ce fichier, et par elles seules.
 
 // ————— LE TABLEAU DU MODE D'EMPLOI SE RECALCULE, IL NE SE RECOPIE PAS —————
 //

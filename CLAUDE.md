@@ -5739,6 +5739,75 @@ croyait tenir un accord. Sa population est désormais l'**intersection** — les
 gatés ET encore déclarés inconnus —, découverte des deux côtés. Mutation : remettre
 `fResist` dans `INCONNUS` fait tomber le port, pas le miroir.
 
+### Le rejeu a eu lieu — et le verdict se dit en DEUX moitiés, pas en un mot
+
+**STATUT · PRÉSENCE ÉTABLIE, RAPPORTÉE ; JUSTESSE ÉTABLIE, MESURÉE DANS LE DÉPÔT.** Le
+rejeu est sur le poste de l'utilisateur, aucun journal n'est entré dans `scripts/mt5/` ;
+les bandes et le seuil qui le rendent lisible sont recalculés ici.
+
+GOLD chez FxPro, H1, 1 minute OHLC, 2020.01.01 → 2026.09.08, 40 164 barres, qualité 99 %.
+En-tête du robot relu **avant** le lancement — « sous résistance D1 20 (marge 1 %) ·
+Mesuré : 237 trades ».
+
+| | | |
+|---|---|---|
+| N-avec (Vuna) | 237 | bande de réussite [211 ; 263] |
+| N-sans (Vuna) | 315 | bande de panne [280 ; 350] |
+| **N-robot** | **235** | dans la première, hors de la seconde |
+| séparation | 24,8 % | au-dessus du seuil calculé de 19,8 % |
+
+> **Le rejeu ferme la PRÉSENCE ; la garde ferme la JUSTESSE.** Et ce n'est pas une
+> prudence de langage : c'est le fichier de la garde qui l'impose, puisqu'il a MESURÉ
+> qu'une fenêtre décalée d'un seau rend 0,4 à 1,2 % et une marge fausse 4,2 %. L'écart
+> observé vaut **0,84 %** — il tombe DEDANS. Un rejeu ne distingue donc pas un port juste
+> d'un port décalé, aujourd'hui ni jamais.
+
+« Port validé » promettrait les deux, et c'est le mot qu'on écrit spontanément parce que
+le chiffre est bon. **Un verdict en un mot sur un dispositif à deux échelles d'erreur est
+faux sur celle qu'il ne mesure pas** — la famille de `netlify.toml`, une garantie vraie
+sur son domaine lue comme générale, appliquée cette fois à une preuve.
+
+**ET L'ÉCART A ÉTÉ JURÉ AVANT D'ÊTRE COMPTÉ** : « vingt fois sous le bruit de
+l'arbitre ». Compté — 0,84 % contre 7,5 % et 11,0 % — c'est **neuf à treize fois**. Une
+apposition chiffrée de plus, dans le sens qui AMPLIFIE, et le geste reste celui qui est
+écrit depuis le début : poser la commande avant le chiffre. Le vrai chiffre ne change rien
+à l'argument, ce qui est précisément la signature de cette famille.
+
+#### Un rejeu qui échoue deux fois avant de mesurer ce qu'on voulait a servi TROIS fois
+
+C'est l'enseignement du chapitre, et il n'est pas dans le nombre.
+
+| lancement | résultat | ce qu'il a trouvé |
+|---|---|---|
+| `260920_1153` | 316 pour 237 attendus | l'export émettait « Filtres générés : aucun » sous une mesure filtrée |
+| `260922_1655` | 102 pour 112 attendus | un réenregistrement avait ajouté un filtre **en silence** — mesure 237 → 112, agrégat du portefeuille 86,4 → 96,3 R |
+| `260922_1719` | 235 pour 237 attendus | ✅ |
+
+**Aucun des deux échecs ne portait sur le port**, et c'est ce qui les réunit : les deux
+portaient sur ce qui **FABRIQUE L'ENTRÉE** du port.
+
+> **Une garde dérivée du texte émis ne peut pas voir un défaut de l'état d'entrée** — le
+> texte émis était, les deux fois, parfaitement cohérent avec ce qu'il avait reçu. C'est
+> l'énoncé déjà écrit pour le premier échec — *une garde qui prouve la formule ne prouve
+> pas qu'on l'appelle* —, et le second en donne la moitié manquante : elle ne prouve pas
+> non plus que ce qu'on lui passe est ce que la ligne a mesuré. *La dérivation remonte
+> jusqu'à son entrée et s'arrête là, dans les deux sens.*
+
+**ET LE SECOND N'AURAIT PAS ÉTÉ TROUVÉ SANS L'EN-TÊTE.** « Mesuré : 112 trades » est la
+seule ligne qui ait dit que le fichier n'était pas celui de la ligne — le compte de trades
+attendu, écrit dans le robot par celui qui l'exporte. Sans elle, le rejeu aurait rendu 102
+contre 237 et l'écart se serait imputé au port, qui était juste.
+
+> **Une valeur écrite dans un artefact au moment où on le produit devient, plus tard, la
+> seule chose capable de dire que l'artefact ne décrit pas ce qu'on croit.** C'est le
+> compte posé, appliqué à un fichier au lieu d'une prose : *un compte affirmé ne détecte
+> rien ; un compte POSÉ fait rougir ce qui vient après lui.*
+
+Et c'est l'argument pour la suite, écrit ici pour qu'il ne soit pas réinventé : ce `N`
+attendu **se confronte au compte que la ligne porte**, avant l'écriture du fichier. La
+confrontation existe déjà pour les filtres (`filtresPerdus`, sur le libellé) ; elle
+manquait sur le nombre, qui est la grandeur la moins ambiguë des deux.
+
 ## Une paire vérifiée sur un TRIPLET est une population choisie
 
 Le même savoir — *« sous résistance et zone de résistance n'ont pas d'équivalent
