@@ -7122,3 +7122,16 @@ de bon chez celui qui l'a fait (règle 16). La prise juste distingue une perte V
 geste de l'utilisateur dans cette session) d'une perte SUBIE (un stockage retrouvé
 amputé) ; elle reste à écrire.
 
+
+**Une hypothèse pour la fermer, À ÉPROUVER, non choisie (proposée par l'utilisateur le
+26/09/2026)** : une suppression voulue est un fait, donc elle laisse une trace. Le geste
+qui vide une famille poserait un marqueur daté, qui voyagerait dans le fichier ; à
+l'écriture, une famille qui disparaît SANS marqueur est une perte subie — refus ; avec
+marqueur, elle est voulue — l'écriture passe. On n'y devine pas l'intention au moment
+d'écrire : on l'enregistre au moment du geste. Trois mesures avant de choisir :
+
+- **combien de gestes suppriment une famille entière** — un seul, et le marqueur coûte une
+  ligne ; plusieurs, et chacun est un site à ne pas oublier (la figure de `deposes`) ;
+- **le marqueur vit dans les DEUX stockages**, sinon il se perd quand l'un est vidé, et le
+  trou revient sous une autre forme ;
+- **le faux refus** : une famille vidée depuis un autre navigateur, puis importée ici.
