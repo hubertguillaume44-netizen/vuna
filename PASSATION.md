@@ -377,8 +377,8 @@ rendu (`sauvegarde-jamais-ecrasee-par-rien`, `sauvegarde-lue-par-morceaux`,
 **Ce qu'elles ne couvrent pas, et il faut le savoir avant de basculer** : la comparaison
 est PAR CLÉ — une clé présente des deux côtés est prise dans le navigateur. Deux adresses
 (ou deux navigateurs) qui écrivent le MÊME fichier s'y relaient donc, et sur une clé
-commune c'est la dernière qui écrit qui gagne. D'où l'étape 5 : on ne travaille plus sur
-venapp.fr une fois le fichier repris sur vuna.fr. Un fichier CHIFFRÉ n'est jamais choisi
+commune c'est la dernière qui écrit qui gagne. D'où l'étape 3 : plus aucun onglet
+venapp.fr ouvert une fois le fichier repris sur vuna.fr. Un fichier CHIFFRÉ n'est jamais choisi
 comme sauvegarde automatique : il se recharge par « Importer mes données ».
 
 **L'ordre, et chaque étape a sa raison :**
@@ -391,15 +391,31 @@ comme sauvegarde automatique : il se recharge par « Importer mes données ».
 2. **Sur venapp.fr/app, dans le navigateur qui porte les données** : la sauvegarde
    automatique doit être à jour — le pied dit « il y a N min ». S'il n'y en a pas encore,
    « Choisir le fichier de sauvegarde », un nom neuf : c'est LE fichier.
-3. **Sur vuna.fr/app : « Choisir le fichier de sauvegarde », et désigner CE fichier.** Il
+3. **FERMER TOUS LES ONGLETS venapp.fr — dans chaque fenêtre, et dans chaque navigateur
+   qui a déjà choisi ce fichier.** Ce n'est pas une précaution, c'est l'étape qui manquait.
+   Une page déjà chargée **continue de tourner** : elle garde la poignée du fichier et son
+   autorisation, et presque chaque geste l'écrit — relu dans le source, 84 sites appellent
+   `ecrireSession`, qui programme une écriture une seconde et demie plus tard. Or cet
+   onglet a déjà fait sa relecture du fichier au début de sa séance : il écrirait SON état,
+   retirant du fichier ce que vuna.fr y a ajouté et remettant ses anciennes valeurs sur les
+   clés communes. vuna.fr les réécrirait à sa prochaine écriture, mais d'ici là le fichier
+   est en retard sur les données.
+4. **Sur vuna.fr/app : « Choisir le fichier de sauvegarde », et désigner CE fichier.** Il
    est lu, pas écrasé : l'écran de l'import donne ses comptes (séries, scans, lignes) —
    les comparer à ceux de venapp.fr —, puis « Fusionner ». Il devient la sauvegarde
    automatique de vuna.fr, et la première écriture emporte tout ce qu'il portait.
-4. **Ressaisir la clé de licence** ; rouvrir le verrou propriétaire si les données étaient
+5. **Ressaisir la clé de licence** ; rouvrir le verrou propriétaire si les données étaient
    dans l'espace personnel — le tiroir Intendance dit quel espace porte le poids.
-5. **Alors seulement, activer la redirection.** Elle rend venapp.fr injoignable, ce qui
-   règle aussi le relais décrit plus haut. Ne pas vider les données du site venapp.fr dans
-   le navigateur pendant les premières semaines : elles ne coûtent rien.
+6. **Alors seulement, activer la redirection.** Ne pas vider les données du site venapp.fr
+   dans le navigateur pendant les premières semaines : elles ne coûtent rien.
+
+**LA REDIRECTION NE REMPLACE PAS L'ÉTAPE 3, et c'est mesuré.** Elle agit sur la PROCHAINE
+requête, jamais sur une page déjà chargée. Banc local à deux origines (non versionné, une
+trentaine de lignes, refait en une minute) : une fois la redirection 301 activée côté
+serveur, l'onglet ouvert a continué d'exécuter son script — dix battements en deux
+secondes, adresse et titre inchangés ; seul un RECHARGEMENT l'a envoyé sur la nouvelle
+origine. Un onglet venapp.fr oublié derrière une autre fenêtre survit donc à la bascule,
+avec sa poignée et son autorisation, tant que personne ne le recharge.
 
 **Ce qui se passait avant, et qui rendait la bascule dangereuse** : sur 260922, « Choisir le
 fichier de sauvegarde » ÉCRIVAIT le stockage vide du navigateur dans le fichier choisi —

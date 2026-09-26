@@ -6822,9 +6822,12 @@ sur d'autres surfaces :
 - `baremeMsg: 'Fichier illisible.'` dans l'import du relevé de courtier : un seul `catch`
   pour toutes les causes, la forme que l'examen des sauvegardes a fermée pour elles.
   **Toujours ouvert.**
-- `importerTout(fichier)`, la méthode : plus aucun appelant, et elle portait l'ancien
-  message. **Supprimée en 260926.2**, cartographie faite — aucune garde ne s'y accrochait ;
-  le gestionnaire de gabarit du même nom, lui, reste et passe par l'examen.
+- `importerTout(fichier)`, **la méthode**, est supprimée en 260926.2 : plus aucun
+  appelant, et elle écrivait sans examen, sous l'ancien message. Cartographie faite, aucune
+  garde ne s'y accrochait. **Le NOM, lui, reste dans l'artefact, et c'est normal** : c'est
+  le gestionnaire du bouton « Réimporter » (`onChange="{{ importerTout }}"`), qui passe
+  désormais par `examinerImport` comme les deux autres portes d'import. Qui cherche le nom
+  dans le fichier livré le trouvera ; ce qui est parti, c'est ce qu'il faisait.
 - **le trou de la garde d'écrasement** : fermé en 260926.2 — voir « Une seule sauvegarde,
   à un seul endroit ».
 
@@ -7182,6 +7185,28 @@ FAMILLE : c'est une trace par CLÉ, posée aux PORTES.** Les trois mesures deman
   autre navigateur — est celui de DEUX navigateurs sur UN fichier : ils s'y relaient, et
   sur une clé commune c'est le dernier qui écrit qui gagne. L'exigence « un seul endroit »
   est ce qui le borne, et PASSATION.md le dit à l'étape de la bascule.
+
+**ET LA PREMIÈRE ÉCRITURE DE CETTE ÉTAPE PORTAIT UN FAIT PLAUSIBLE.** Elle disait que la
+redirection « rend venapp.fr injoignable, ce qui règle aussi le relais ». C'est vrai d'une
+page qu'on OUVRE, faux d'une page déjà ouverte — et c'est l'utilisateur qui a posé la
+question. Mesuré en séance sur un banc local à deux origines : une redirection 301
+activée n'arrête pas le script d'un onglet chargé (dix battements en deux secondes après
+l'activation) ; seul un rechargement l'envoie ailleurs. Or c'est précisément l'onglet
+oublié qui est dangereux : il a fait sa relecture au début de sa séance, et chaque geste
+— 84 sites appellent `ecrireSession`, qui programme une écriture — remet SON état dans le
+fichier. La procédure porte donc une étape de plus, « fermer tous les onglets venapp.fr »,
+avant de choisir le fichier sur vuna.fr.
+
+> **Une redirection agit sur la prochaine requête, jamais sur ce qui tourne déjà.** C'est
+> la classe du fait disponible remplacé par un plausible : « la redirection ferme l'ancien
+> site » a la forme d'une évidence, et la commande qui répondait tenait en trente lignes.
+
+**Ce qui n'est PAS fermé par le produit, et qui est relevé** : un second écrivain sur le
+même fichier n'est détecté par rien. La date de modification du fichier le trahirait — un
+fichier modifié depuis notre dernière écriture a été écrit par quelqu'un d'autre — et
+pourrait déclencher une nouvelle relecture. Elle rendrait à l'onglet ancien les clés
+neuves, mais sur une clé COMMUNE c'est encore lui qui gagnerait : la procédure reste le
+remède, et c'est pourquoi rien n'est posé ce jour.
 
 **UNE CLÉ PRÉSENTE N'EST PAS UNE CLÉ GARDÉE.** La confrontation demandait d'abord « la clé
 existe-t-elle ici ? ». Un portefeuille recréé sur l'écran vidé, avant la première écriture,
