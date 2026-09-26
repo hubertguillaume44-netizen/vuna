@@ -361,6 +361,14 @@ de venapp.fr ne s'exécute pour les lire. Elles redeviennent lisibles le jour o�
 retire la redirection, pas avant. Le seul pont est donc un **fichier**, et il se fait
 AVANT.
 
+**AVANT TOUT : COPIER LE FICHIER DE SAUVEGARDE AILLEURS, SOUS UN AUTRE NOM.** Mesuré le
+26/09/2026 : la réécriture automatique part **sans aucun clic** dès qu'un navigateur a
+gardé la poignée du fichier et son autorisation. Sur une version antérieure à 260926, un
+navigateur vide l'a écrasé en deux secondes ; et même sur 260926, un navigateur dont seul
+le stockage local a été vidé l'écrase en perdant les portefeuilles. Une COPIE posée
+ailleurs n'a de poignée dans aucun navigateur : aucune version ne peut l'écrire sans
+qu'on la choisisse.
+
 **L'ordre, et chaque étape a sa raison :**
 
 1. **Vérifier la version EN LIGNE aux deux adresses** — le numéro du pied de page, pas le

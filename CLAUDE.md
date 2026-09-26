@@ -6816,6 +6816,18 @@ filtre » et « un nombre de trades différent de la mesure ». Sur une sécuris
 mots sont faux — c'est la classe du champ qui nomme mal ce qu'il porte, et le corriger
 touche une constante que trois gardes tiennent. Non fait.
 
+**Relevés au même rang, pour le lot suivant (26/09/2026)** — la même famille, l'attrape-tout,
+sur d'autres surfaces :
+
+- `baremeMsg: 'Fichier illisible.'` dans l'import du relevé de courtier : un seul `catch`
+  pour toutes les causes, la forme que `lireSauvegarde` vient de fermer pour les sauvegardes.
+- `importerTout(fichier)` : plus aucun appelant, et il porte l'ancien message. **À
+  SUPPRIMER, pas à laisser dormir** — le jour où un bouton le rappelle, le défaut revient
+  sans que rien ne l'annonce. Un producteur mort n'est pas sans conséquence : c'est une
+  régression en attente d'appelant (règle 14, cartographier avant de supprimer).
+- **le trou de la garde d'écrasement, mesuré** : voir « Un bouton qui accueille quelqu'un
+  SANS ses données », sa dernière section.
+
 ## Un fond permanent de messages est un canal de diagnostic hors service
 
 **STATUT · INSTRUMENTATION, AUCUNE CAUSE PRÉTENDUE.** Rien n'est réparé : le fond est
@@ -7088,3 +7100,25 @@ La seule cause qui touche un fichier sain est celle que personne n'avait listée
 taille, le premier et le dernier caractère —, jamais sur le libellé d'une exception, qui
 change d'un navigateur à l'autre. `sauvegarde-illisible-dit-pourquoi.test.mjs` et
 `sauvegarde-jamais-ecrasee-par-rien.test.mjs` tiennent les deux, trois mutations chacune.
+
+### Le trou mesuré de cette garde : le stockage local vidé, IndexedDB gardé
+
+**MESURÉ DANS LE DÉPÔT, le 26/09/2026, sur 260922 et sur 260926.** La réécriture de chaque
+minute part sans aucun clic dès qu'une poignée et son autorisation existent — sur 260922,
+un navigateur vide a écrasé le fichier **en deux secondes**, trois blocs devenus un, sans
+une série ni un scan ; 260926 le refuse. Mais quand seul le stockage LOCAL est vidé,
+IndexedDB gardé, l'écriture porte encore les scans (qui vivent dans IndexedDB) et plus les
+portefeuilles ni l'index des séries (qui vivent dans le stockage local) : **les deux
+versions écrasent**, et un portefeuille de deux lignes disparaît du fichier.
+
+> **« Porter quelque chose » n'est pas « porter autant ».** La garde demande si
+> l'écriture est VIDE ; la question était de savoir si elle PERD une famille. Le cas vide
+> était le cas mesuré, donc le cas prouvé — c'est la règle 10, sur une garde.
+
+**La correction évidente a un faux refus, et c'est pourquoi elle n'est pas faite ce
+jour** : refuser toute écriture qui perd une famille entière refuserait aussi « vider
+l'historique des scans », qui est un geste du produit — et la sauvegarde s'arrêterait pour
+de bon chez celui qui l'a fait (règle 16). La prise juste distingue une perte VOULUE (un
+geste de l'utilisateur dans cette session) d'une perte SUBIE (un stockage retrouvé
+amputé) ; elle reste à écrire.
+
