@@ -370,12 +370,14 @@ rendu (`sauvegarde-jamais-ecrasee-par-rien`, `sauvegarde-lue-par-morceaux`,
 
 | la garantie | ce qui la tient |
 |---|---|
-| il n'est jamais remplacé par un état **moins complet** sans un geste | avant la première écriture d'une séance, le fichier est relu ; ce qu'il porte et que le navigateur n'a plus — sans l'avoir SUPPRIMÉ, ce que dit une trace posée à chaque suppression — est remis dans le navigateur, puis écrit. Une clé qui ne peut pas être remise : rien n'est écrit |
+| il n'est jamais remplacé par un état **moins complet** sans un geste | avant la première écriture d'une séance, le fichier est relu ; ce qu'il porte et que le navigateur n'a plus — sans l'avoir SUPPRIMÉ, ce que dit une trace posée à chaque suppression — est remis dans le navigateur, puis écrit. Une clé qui ne peut pas être remise : rien n'est écrit. **Et depuis 260926.4, chaque écriture est comptée** — séries, scans, portefeuilles, lignes — et, si l'une de ces catégories BAISSE par rapport au fichier sans qu'un geste l'ait vidée (un scan supprimé, une ligne retirée…), le fichier n'est pas remplacé. « Exporter mes données » sur un fichier existant suit la même règle (`fichier-ne-perd-pas-une-categorie`) |
 | il se relit **quelle que soit sa taille** | lecture au fil, comme l'écriture. Mesuré : 570 Mo examinés en 4 s et rechargés en 16 s, 120 séries et le portefeuille |
 | « Choisir le fichier de sauvegarde » sur un fichier existant le **charge** | l'écran de l'import s'ouvre ; c'est « Fusionner » ou « Remplacer » qui en fait la sauvegarde automatique. « Annuler » ne touche à rien |
 
 **Ce qu'elles ne couvrent pas, et il faut le savoir avant de basculer** : la comparaison
-est PAR CLÉ — une clé présente des deux côtés est prise dans le navigateur. Deux adresses
+est PAR CLÉ — une clé présente des deux côtés est prise dans le navigateur —, puis par
+COMPTE de catégorie : un scan perdu et un autre ajouté se compensent, et un geste qui vide
+une catégorie l'ouvre pour le reste de la séance. Deux adresses
 (ou deux navigateurs) qui écrivent le MÊME fichier s'y relaient donc, et sur une clé
 commune c'est la dernière qui écrit qui gagne. D'où l'étape 3 : plus aucun onglet
 venapp.fr ouvert une fois le fichier repris sur vuna.fr. Un fichier CHIFFRÉ n'est jamais choisi
@@ -385,12 +387,15 @@ comme sauvegarde automatique : il se recharge par « Importer mes données ».
 
 1. **Vérifier la version EN LIGNE aux deux adresses** — le numéro du pied de page, pas le
    tableau de bord Netlify (la publication peut être verrouillée : une construction verte
-   ne prouve pas une mise en ligne). Il faut **260926.3 ou après** aux DEUX : 260926.2 est
+   ne prouve pas une mise en ligne). Il faut **260926.4 ou après** aux DEUX : 260926.2 est
    la première qui ne remplace jamais le fichier par moins que ce qu'il porte, qui le relit
    au fil, et dont « Choisir » charge au lieu d'écrire ; 260926.3 est la première dont
    l'import RÉPOND à l'écran (sur 260926.2, « Importer mes données » ouvrait l'examen dans
    le tiroir fermé : rien ne se voyait) et dont un onglet cesse d'écrire dans un fichier
-   repris par une autre adresse.
+   repris par une autre adresse ; 260926.4 est la première qui refuse une écriture dont une
+   catégorie baisse sans geste — mesuré sur 260926.3, un scan neuf lancé avant la première
+   écriture faisait passer le fichier de 4 scans à 1, et « Exporter mes données » sur le
+   même fichier de 4 à 0.
 2. **Sur venapp.fr/app, dans le navigateur qui porte les données** : la sauvegarde
    automatique doit être à jour — le pied dit « il y a N min ». S'il n'y en a pas encore,
    « Choisir le fichier de sauvegarde », un nom neuf : c'est LE fichier.

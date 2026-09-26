@@ -7659,8 +7659,16 @@ class Component extends DCLogic {
   }
   ecrirePf(pfs, favoris, valides) {
     const k = this.cle(this.CLE_PF);
-    const charge = JSON.stringify({ pfs, favoris,
-      valides: valides === undefined ? (this.state.valides || []) : valides });
+    const vals = valides === undefined ? (this.state.valides || []) : valides;
+    const charge = JSON.stringify({ pfs, favoris, valides: vals });
+    // Un portefeuille ou une ligne retirés passent tous par ici : une baisse par rapport à
+    // ce qui était écrit est le geste qui autorise le fichier à les perdre. Une clé ABSENTE
+    // n'en est pas un — c'est une recréation, et le fichier fait foi (`confronterFichier`).
+    try {
+      const a = JSON.parse(localStorage.getItem(k) || 'null');
+      if (a) this.noterVidage([(pfs || []).length < (a.pfs || []).length && 'pfs',
+        (vals || []).length < (a.valides || []).length && 'lignes'].filter(Boolean));
+    } catch (e) {}
     try {
       localStorage.setItem(k, charge);
       // écriture relue : sans ce contrôle, une perte passe inaperçue jusqu'au retour
@@ -13422,6 +13430,9 @@ GROUPES = {
     // chaque suppression du stockage local laisse sa trace (voir `noterEffacement`) ;
     // celles d'avant cette ligne attendaient dans la file de la façade
     poserNoteEffacement((k) => this.noterEffacement(k));
+    // ce qui précède est rejoué depuis la file du chargement : des migrations, pas des
+    // gestes. À partir d'ici, une suppression est un geste (voir `noterVidage`).
+    this._gestesOuverts = true;
     // sans await : le verdict peut arriver quand il veut, rien n'en dépend
     this.verifierVersionServie();
     window.addEventListener('beforeunload', this.quitter);
@@ -18033,7 +18044,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260926.3';
+  VERSION_APP = '260926.4';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
@@ -20599,7 +20610,9 @@ GROUPES = {
   // donc une propriété de ce qui est ÉCRIT, pas une relecture de l'état à côté.
   async *blocsExport() {
     const petit = this.dumpComplet();
-    for (const [k, v] of Object.entries(petit)) yield [k, JSON.stringify(v), 0];
+    // le quatrième élément est la valeur telle qu'elle est, pour `compterBloc` : recompter
+    // depuis le texte sérialisé réanalyserait le plus gros bloc — celui des scans
+    for (const [k, v] of Object.entries(petit)) yield [k, JSON.stringify(v), 0, v];
     for (const [k, v] of Object.entries(petit)) {
       if (!k.startsWith(this.CLE_SERIES)) continue;
       let idx = [];
@@ -20607,7 +20620,7 @@ GROUPES = {
       for (const sym of idx) {
         const cle = k + '|' + sym;
         const g = await this.grosGet(cle);
-        if (g) yield ['gros:' + cle, JSON.stringify(g), 0];
+        if (g) yield ['gros:' + cle, JSON.stringify(g), 0, null];
       }
     }
     const cles = new Set();
@@ -20619,7 +20632,7 @@ GROUPES = {
       const g = await this.grosGet(cle);
       if (!g) continue;
       const nC = (g.scanC && g.scanC.n) || (Array.isArray(g.scan) ? g.scan.length : 0);
-      yield ['gros:' + cle, JSON.stringify(g), nC];
+      yield ['gros:' + cle, JSON.stringify(g), nC, g];
     }
   }
   // ————— ÉCRIRE AU FIL : le pic est borné par le PLUS GROS BLOC, pas le stockage —————
@@ -20647,9 +20660,13 @@ GROUPES = {
     //
     // Les trois nombres viennent donc du MÊME endroit : ce qui traverse ce puits.
     let n = 0, octets = 0, maxK = '', maxL = 0, premier = true, nS = 0, nC = 0, nG = 0;
-    for await (const [k, vj, nCbloc] of this.blocsExport()) {
+    // les catégories, comptées sur ce qui est ÉCRIT et par le compteur de l'examen : c'est
+    // ce que la règle de `sauverAuto` compare au fichier, avant de le remplacer
+    const comptes = this.comptesVides();
+    for await (const [k, vj, nCbloc, brut] of this.blocsExport()) {
       const m = (premier ? '' : ',') + JSON.stringify(k) + ':' + vj;
       await sink.write(m);
+      this.compterBloc(comptes, k, brut);
       n += 1; octets += m.length; premier = false;
       if (this.estBlocSerie(k)) nS += 1;
       if (k.startsWith('gros:')) nG += 1;
@@ -20657,7 +20674,7 @@ GROUPES = {
       if (vj.length > maxL) { maxL = vj.length; maxK = k; }
     }
     await sink.write('}}');
-    return { n, octets: octets + entete.length + 14, maxK, maxL, nS, nC, nG };
+    return { n, octets: octets + entete.length + 14, maxK, maxL, nS, nC, nG, comptes };
   }
   // les bougies chargées sont le plus gros poste de mémoire HORS export, et
   // l'export ne les lit pas (il relit le stockage) : on les relâche avant.
@@ -20752,6 +20769,7 @@ GROUPES = {
     e.delete(k); e.add(k);                       // la plus récente en dernier
     while (e.size > this.PLAFOND_EFFACEES) e.delete(e.values().next().value);
     this.persisterEffacees();
+    this.noterVidage(this.categoriesDe(k));
   }
   persisterEffacees() {
     const l = [...this.effaceesIci()];
@@ -20771,6 +20789,102 @@ GROUPES = {
     const e = this.effaceesIci();
     for (const k of ecrites) e.delete(k);
     this.persisterEffacees();
+  }
+  // ————— UNE CATÉGORIE QUI BAISSE SANS GESTE N'EST PAS ÉCRITE —————
+  //
+  // MESURÉ SUR 260926.3, sur le cas exact rapporté — un navigateur sans scan, un fichier qui
+  // en porte quatre : les trois chemins rapportés n'écrivaient rien (import refusé, rien
+  // d'adopté, confrontation qui refuse). Deux autres les perdaient. Un scan NEUF lancé dans
+  // la séance avant la première écriture : la clé du scan existe alors ici, la confrontation
+  // (par CLÉ) ne la remet pas, et le fichier passait de 4 scans à 1. « Exporter mes
+  // données » en choisissant le même fichier : aucune confrontation, 4 → 0.
+  //
+  // La règle est posée sur ce qui est RÉELLEMENT écrit, compté au fil par `ecrireExportAu`,
+  // et jugée AVANT `close()` : un fichier n'est remplacé que par `close()`, donc un refus à
+  // cet instant le laisse intact. Une catégorie — séries, scans, portefeuilles, lignes —
+  // dont le compte écrit est INFÉRIEUR à celui du fichier est refusée, sauf si un geste l'a
+  // vidée : une suppression tracée (`noterEffacement`), un scan supprimé, un portefeuille ou
+  // une ligne retirés.
+  //
+  // Le brief proposait « perd une catégorie » ; c'est « baisse » qui est retenu, parce que
+  // le trou mesuré ne perd pas la catégorie : 4 scans deviennent 1.
+  //
+  // ANGLE MORT, en tête (règle 9) : un geste ouvre SA catégorie pour le reste de la séance
+  // — la forme du brief —, et au-delà jusqu'à la prochaine écriture réussie du fichier
+  // automatique. Pendant ce temps, une perte subie dans la même catégorie passe avec lui.
+  // Et la comparaison est un COMPTE : un scan perdu et un autre ajouté se compensent.
+  CATEGORIES_COMPTEES = ['series', 'scans', 'pfs', 'lignes'];
+  NOMS_CATEGORIES = { series: ['série', 'séries'], scans: ['scan', 'scans'],
+    pfs: ['portefeuille', 'portefeuilles'], lignes: ['ligne', 'lignes'] };
+  comptesVides() { return { series: 0, scans: 0, configs: 0, pfs: 0, lignes: 0 }; }
+  // les catégories qu'une clé porte, sous la forme où l'export l'écrit
+  categoriesDe(k) {
+    k = String(k || '');
+    if (this.estBlocSerie(k)) return ['series'];
+    if (k.startsWith('gros:' + this.CLE_SCAN)) return ['scans'];
+    if (k.startsWith(this.CLE_PF)) return ['pfs', 'lignes'];
+    return [];
+  }
+  // UN compteur, pour l'examen, la confrontation et l'écriture : trois comptes écrits trois
+  // fois divergeraient, et la règle comparerait deux grandeurs différentes. `v` est la
+  // valeur telle qu'elle vient — texte du fichier, chaîne du stockage, ou objet.
+  compterBloc(c, k, v) {
+    if (this.estBlocSerie(k)) c.series += 1;
+    const scan = k.startsWith('gros:' + this.CLE_SCAN), pf = k.startsWith(this.CLE_PF);
+    if (!scan && !pf) return;
+    for (let i = 0; i < 2 && typeof v === 'string'; i++) { try { v = JSON.parse(v); } catch (e) { v = null; } }
+    if (!v || typeof v !== 'object') return;
+    if (scan) {
+      c.scans += (v.archives || []).length;
+      c.configs += (v.lignes && v.lignes.n) || (Array.isArray(v.lignes) ? v.lignes.length : 0);
+    } else { c.pfs += (v.pfs || []).length; c.lignes += (v.valides || []).length; }
+  }
+  // Le geste qui vide une catégorie. Il vit en séance ET dans le registre des traces : une
+  // suppression faite juste avant de fermer l'onglet, sans écriture entre les deux, doit
+  // encore valoir à la séance suivante — sinon le fichier refuserait une suppression voulue.
+  // Les suppressions faites AU CHARGEMENT (migrations, ménage) ne sont pas des gestes : elles
+  // passent avant `_gestesOuverts`.
+  noterVidage(cats) {
+    if (!this._gestesOuverts || !cats || !cats.length) return;
+    if (!this._vidagesSeance) this._vidagesSeance = new Set();
+    const e = this.effaceesIci();
+    for (const c of cats) { this._vidagesSeance.add(c); e.delete('vidage:' + c); e.add('vidage:' + c); }
+    this.persisterEffacees();
+    // un refus pour perte attendait un geste : en voici un, la prochaine minute réessaie
+    this._refusPerte = null;
+  }
+  async vidagesPermis() {
+    const s = new Set(this._vidagesSeance || []);
+    for (const k of await this.lireEffacees()) if (k.startsWith('vidage:')) s.add(k.slice(7));
+    return s;
+  }
+  // ce qui baisse entre le fichier et ce qui vient d'être écrit, sans geste
+  pertesSansGeste(avant, ecrit, permis) {
+    if (!avant) return [];
+    return this.CATEGORIES_COMPTEES.filter((c) => (ecrit[c] || 0) < (avant[c] || 0) && !permis.has(c))
+      .map((c) => ({ cat: c, avant: avant[c] || 0, apres: ecrit[c] || 0 }));
+  }
+  PHRASE_PERTE(nom, pertes) {
+    const nb = (n, c) => n + ' ' + this.NOMS_CATEGORIES[c][n > 1 ? 1 : 0];
+    return 'Rien n’a été écrit dans ' + (nom || 'le fichier') + ' : il porte '
+      + pertes.map((p) => nb(p.avant, p.cat)).join(', ') + ', et ce navigateur '
+      + pertes.map((p) => nb(p.apres, p.cat)).join(', ')
+      + '. L’écrire les lui aurait retirés sans que vous les ayez supprimés : il est laissé intact.';
+  }
+  // Les comptes d'un fichier de sauvegarde, lus au fil. `null` quand ils ne sont pas lisibles
+  // (fichier étranger, chiffré, abîmé) : il n'y a alors rien à comparer.
+  async comptesDuFichier(f) {
+    if (!f || !f.size) return this.comptesVides();
+    try {
+      const ex = await this.examinerSauvegarde(f);
+      return ex.ok && ex.compte ? ex.compte : null;
+    } catch (e) { return null; }
+  }
+  comptesFichierDe(h) { return (this._comptesFichier && h && this._comptesFichier.get(h)) || null; }
+  poserComptesFichier(h, c) {
+    if (!h) return;
+    if (!this._comptesFichier) this._comptesFichier = new WeakMap();
+    if (c) this._comptesFichier.set(h, c); else this._comptesFichier.delete(h);
   }
   // Une clé présente MAINTENANT mais absente à l'ouverture de la page, alors que le fichier
   // la porte : le fichier ne peut la porter que parce que le navigateur l'avait à la
@@ -20804,14 +20918,17 @@ GROUPES = {
       return { ok: false, msg: rien + 'le navigateur refuse de le relire (' + ((e && e.name) || 'erreur')
         + '), donc Vuna ne peut pas vérifier ce qu’il porte avant de le remplacer. Choisissez à nouveau le fichier.' };
     }
-    if (!f.size) return { ok: true };
+    if (!f.size) return { ok: true, comptes: this.comptesVides() };
     const presentes = await this.clesPresentes();
+    // ce que le fichier porte, par catégorie : la base de la règle de `sauverAuto`
+    const comptes = this.comptesVides();
     const effacees = await this.lireEffacees();
     const aRemettre = new Set(), remplacees = new Set();
     const entete = {};
     let vu = false, chiffre = false;
     try {
-      for await (const x of lireSauvegardeAuFil(f, { garder: (k, ent) => ent && k !== 'donnees' })) {
+      for await (const x of lireSauvegardeAuFil(f, { garder: (k, ent) => (ent ? k !== 'donnees'
+        : this.categoriesDe(this.cleVersNeuf(k)).some((c) => c !== 'series')) })) {
         if (x.champ !== undefined) {
           if (this.estChampChiffre(x.champ)) chiffre = true;
           if (x.valeur !== null) { try { entete[x.champ] = JSON.parse(x.valeur); } catch (e) {} }
@@ -20823,6 +20940,7 @@ GROUPES = {
           if (refus) return { ok: false, msg: rien + refus + ' Vuna ne remplace pas un fichier qui n’est pas le sien : choisissez un autre nom de fichier.' };
         }
         const k = this.cleVersNeuf(x.cle);
+        this.compterBloc(comptes, k, x.valeur);
         if (!this.estCleExportee(k) || effacees.has(k)) continue;
         if (!presentes.has(k)) aRemettre.add(k);
         else if (this.perdueALOuverture(k)) { aRemettre.add(k); remplacees.add(k); }
@@ -20844,7 +20962,7 @@ GROUPES = {
       return { ok: false, msg: rien + refusVide
         + ' Vuna ne remplace pas un fichier qui n’est pas le sien : choisissez un autre nom de fichier.' };
     }
-    if (!aRemettre.size) return { ok: true };
+    if (!aRemettre.size) return { ok: true, comptes };
     // ————— CE QUE LE FICHIER PORTE ET QUE LE NAVIGATEUR N'A PLUS : REMIS, PUIS ÉCRIT —————
     // La fusion va dans le sens du navigateur : le fichier lui REND ce qu'il a perdu, et
     // l'écriture qui suit emporte donc tout ce que le fichier portait. Si une seule clé ne
@@ -20861,7 +20979,7 @@ GROUPES = {
     this.setState(etat, () => this.lancerTest());
     // une valeur écrite ICI depuis l'ouverture a été remplacée par celle du fichier : c'est
     // un changement dans le navigateur, et il se dit — jamais « remis » tout court
-    return { ok: true, msg: 'Le fichier ' + nom + ' portait ce que ce navigateur n’avait plus — '
+    return { ok: true, comptes, msg: 'Le fichier ' + nom + ' portait ce que ce navigateur n’avait plus — '
       + this.decrireCles(aRemettre) + ' : c’est remis ici, puis écrit. Rien n’en a été retiré.'
       + (remplacees.size ? ' Attention : ' + this.decrireCles(remplacees) + ' avai' + (remplacees.size > 1 ? 'en' : '')
         + 't été recréé' + (remplacees.size > 1 ? 's' : '') + ' ici depuis l’ouverture de la page, après la perte : '
@@ -20906,9 +21024,12 @@ GROUPES = {
   }
   // Un fichier devient la sauvegarde automatique ICI, et nulle part ailleurs : après un geste
   // qui a rendu le navigateur au moins aussi complet que lui — un fichier neuf, ou un import.
-  async adopterFichierAuto(h) {
+  // `comptes` : ce que le fichier porte, par catégorie — lu par qui l'adopte (l'examen de
+  // l'import, ou un fichier neuf). Sans eux, la première écriture le relit.
+  async adopterFichierAuto(h, comptes) {
     try { await this.idbSet(h); } catch (e) {}
     this.handleAuto = h;
+    this.poserComptesFichier(h, comptes || null);
     // le geste lève la garde de l'adresse pour l'écriture qui suit — et une seule
     this._adopteIci = h;
     this._confronte = h;
@@ -20987,7 +21108,7 @@ GROUPES = {
       this.journalImport('fichier choisi : « ' + (h.name || f.name) + ' » · ' + this.taille(f.size)
         + (f.size ? ' — il existe : il sera LU, pas écrasé' : ' — neuf : il devient la sauvegarde automatique'));
       if (f.size) { await this.examinerImport(f, h); return; }
-      await this.adopterFichierAuto(h);
+      await this.adopterFichierAuto(h, this.comptesVides());
       // sauverAuto pose lui-même autoMsg : null en cas de succès, et un message en
       // cas de refus — l'effacer ici essuyait le refus à l'instant où il venait
       // d'être dit, et l'écran ne changeait pas après le choix du fichier
@@ -21464,7 +21585,16 @@ GROUPES = {
         }
         this._confronte = h;
         this._refusConfronte = null;
+        this.poserComptesFichier(h, c.comptes || null);
         remis = c.msg || null;
+      }
+      // un refus pour PERTE n'est pas retenté à chaque minute : il réécrirait le fichier
+      // entier pour refuser au même endroit. Un geste de vidage, ou le bouton, le relance.
+      if (!force && this._refusPerte === h) return;
+      if (!this.comptesFichierDe(h)) {
+        let f0 = null;
+        try { f0 = await h.getFile(); } catch (e) {}
+        this.poserComptesFichier(h, await this.comptesDuFichier(f0));
       }
       // les traces antérieures à CETTE écriture : une suppression faite pendant qu'elle
       // tourne doit survivre jusqu'à la suivante
@@ -21472,11 +21602,24 @@ GROUPES = {
       w = await h.createWritable();
       // au FIL, comme l'export : la chaîne unique du dump entier refaisait deux
       // fois le stockage en mémoire — chaque minute, à chaque sauvegarde
-      await this.ecrireExportAu(w,
+      const bilanAuto = await this.ecrireExportAu(w,
         '"outil":"vuna","version":1,"date":' + JSON.stringify(new Date().toISOString()) + ','
         + '"origine":' + JSON.stringify(this.origineIci()) + ',');
+      // ————— AVANT `close()` : le fichier n'est pas encore remplacé —————
+      const pertes = this.pertesSansGeste(this.comptesFichierDe(h), bilanAuto.comptes, await this.vidagesPermis());
+      if (pertes.length) {
+        await w.abort();
+        w = null;
+        this._refusPerte = h;
+        this.setState({ autoAttente: true, autoMsg: this.PHRASE_PERTE(h.name, pertes)
+          + ' Pour sauvegarder l’état d’ici sans le toucher : « Choisir le fichier de sauvegarde », '
+          + 'avec un AUTRE nom.' });
+        return;
+      }
       await w.close();
       w = null;                       // fermé : le finally n'a plus rien à avorter
+      this._refusPerte = null;
+      this.poserComptesFichier(h, bilanAuto.comptes);
       this.oublierEffacees(effaceesAvant);
       // `_autoTaille` est partie avec la vérification : elle n'avait qu'elle pour
       // lecteur. Un producteur sans consommateur pèse dans l'artefact et fait
@@ -21865,6 +22008,22 @@ GROUPES = {
         }
       }
       if (h) {
+        // ————— UN FICHIER EXISTANT EST LU AVANT D'ÊTRE REMPLACÉ —————
+        // Mesuré sur 260926.3 : « Exporter mes données » sur le fichier de sauvegarde, depuis
+        // un navigateur sans scan — le fichier passait de 4 scans à 0, sans confrontation.
+        // Le sélecteur du système demande « remplacer ? » ; il ne dit pas ce qui sera perdu.
+        // La règle est celle de la sauvegarde automatique (`pertesSansGeste`), jugée avant
+        // `close()`. Un fichier illisible, étranger ou chiffré n'a pas de comptes : il est
+        // remplacé comme avant, l'utilisateur l'a choisi.
+        let avant = null;
+        try {
+          const f0 = await h.getFile();
+          if (f0.size) {
+            this.setState({ sauvFait: 'Lecture de « ' + (h.name || f0.name) + ' » avant de le remplacer…', sauvMsg: null });
+            avant = await this.comptesDuFichier(f0);
+          }
+        } catch (eL) {}
+        const vidagesAvant = [...(await this.lireEffacees())].filter((k) => k.startsWith('vidage:'));
         // ————— AU FIL : rien ne s'accumule, le pic tient dans le plus gros bloc
         // et le writable a une ISSUE dans tous les cas : ouvert sans close ni
         // abort, il laisse un .crswap sur le disque de l'utilisateur (mesuré)
@@ -21872,11 +22031,22 @@ GROUPES = {
         try {
           w = await h.createWritable();
           bilan = await this.ecrireExportAu(w, entete);
+          const pertes = this.pertesSansGeste(avant, bilan.comptes, await this.vidagesPermis());
+          if (pertes.length) {
+            await w.abort();
+            w = null;
+            this.setState({ sauvFait: null, sauvMsg: this.PHRASE_PERTE(h.name, pertes)
+              + ' Pour enregistrer une copie de l’état d’ici, choisissez un AUTRE nom de fichier.' });
+            return;
+          }
           await w.close();
           w = null;
         } finally {
           if (w) { try { await w.abort(); } catch (eA) {} }
         }
+        // sans fichier automatique, cette copie EST la sauvegarde : le geste de vidage a été
+        // porté, il n'a plus à ouvrir sa catégorie aux séances suivantes
+        if (!this.handleAuto) this.oublierEffacees(vidagesAvant);
       } else {
         // ————— REPLI Blob : limite ASSUMÉE ET DITE. Sans écriture au fil, le
         // stockage vit DEUX fois en mémoire pendant l'assemblage (mesuré : le
@@ -21990,7 +22160,8 @@ GROUPES = {
           + 'maintenant lui retirerait ce qui n’a pas pu être rechargé.';
         this.journalImport('le fichier n’est PAS devenu la sauvegarde automatique : tout n’a pas pu être rechargé', 'alerte');
       } else {
-        await this.adopterFichierAuto(d.adopter);
+        await this.adopterFichierAuto(d.adopter,
+          { series: d.series, scans: d.scans, configs: d.configs, pfs: d.pfs, lignes: d.lignes });
       }
     }
     this.setState({ ...etat, sauvMsg: msg }, () => this.lancerTest());
@@ -22306,7 +22477,7 @@ GROUPES = {
     }
     const entete = {};
     let chiffre = false, dansDonnees = false;
-    const c = { blocs: 0, series: 0, scans: 0, configs: 0, pfs: 0, lignes: 0, comptes: [] };
+    const c = { blocs: 0, ...this.comptesVides(), comptes: [] };
     // Les clés portent l'espace ET le compte entre la base et le suffixe :
     // « gros:vena.series.v1.client.demo|DEMO-TECH ». Chercher « base| » ne trouvait
     // donc rien, et le dialogue annonçait « 0 série » devant un fichier de 7 Mo.
@@ -22330,16 +22501,7 @@ GROUPES = {
         }
         const k = this.cleVersNeuf(x.cle);
         c.blocs += 1;
-        if (k.startsWith('gros:' + this.CLE_SERIES) && k.includes('|')) c.series += 1;
-        if (x.valeur !== null) {
-          let v = null;
-          try { v = JSON.parse(x.valeur); if (typeof v === 'string') v = JSON.parse(v); } catch (e) { v = null; }
-          if (k.startsWith('gros:' + this.CLE_SCAN) && v) {
-            c.scans += (v.archives || []).length;
-            c.configs += (v.lignes && v.lignes.n) || (Array.isArray(v.lignes) ? v.lignes.length : 0);
-          }
-          if (k.startsWith(this.CLE_PF) && v) { c.pfs += (v.pfs || []).length; c.lignes += (v.valides || []).length; }
-        }
+        this.compterBloc(c, k, x.valeur);
         // Un dump peut porter PLUSIEURS comptes : annoncer le premier trouvé désignait
         // « fxpro » devant un fichier dont toutes les données sont sur « demo ».
         const m = k.replace(/^gros:/, '').match(/\.(fxpro|compte\d|demo)(\||$)/);
@@ -22551,6 +22713,8 @@ GROUPES = {
   // Supprime UN scan : ses lignes portent sa marque _sid, donc on les retire sans
   // toucher aux autres. Vider tout l'historique était la seule option jusqu'ici.
   supprimerScan(id) {
+    // un geste qui vide : le fichier pourra perdre ce scan (voir `pertesSansGeste`)
+    this.noterVidage(['scans']);
     const arch = (this.state.archives || []).filter((a) => a.id !== id);
     // les lignes vivent dans _scanBrut (le state ne garde qu'un compteur) : les lire
     // dans state.scan renvoyait un tableau vide et effaçait donc tout l'historique

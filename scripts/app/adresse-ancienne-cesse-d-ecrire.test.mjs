@@ -22,9 +22,15 @@ const SOLO = new URL("../../Vuna.solo.html", import.meta.url).pathname;
 const CHROMIUMS = [process.env.VUNA_CHROMIUM,
   "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"].filter(Boolean);
 
+// Le contenu est une clé que la règle des catégories ne COMPTE pas (des favoris). Il portait
+// un portefeuille que ce navigateur n'a pas, et le battement du banc saute la relecture
+// (`_confronte = h`) — un état que le vrai chemin ne produit jamais, puisque la relecture
+// l'aurait remis. Depuis 260926.4, écrire 0 portefeuille sur un fichier qui en porte 1 est
+// refusé, à raison ; le sujet de cette garde est la SIGNATURE, pas le contenu (règle 14,
+// deuxième issue : réancrée, son invariant intact).
 const fichier = (origine) => JSON.stringify({ outil: "vuna", version: 1, date: "2026-09-26T08:00:00.000Z",
   ...(origine ? { origine } : {}),
-  donnees: { "vena.portefeuilles.v1.client.fxpro": '{"pfs":[{"nom":"P1","syms":[]}],"favoris":[],"valides":[]}' } });
+  donnees: { "vena.favoris.v1.client.fxpro": '["GOLD"]' } });
 
 const FAUX_HANDLE = `(contenu) => {
   window.__f = { contenu, ecritures: 0 };

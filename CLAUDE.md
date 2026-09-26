@@ -7220,6 +7220,24 @@ d'abord été verte sous mutation** : le banc ne recréait aucune clé, donc ell
 exercée — la mutation inerte a dit « non mesuré », pas « robuste ». Le banc recrée
 désormais un portefeuille, et la même mutation tombe en citant le portefeuille recréé.
 
+**UNE CLÉ PRÉSENTE NE DIT PAS CE QU'ELLE PORTE — et le brief avait écrit « perd », pas
+« baisse ».** STATUT · CAUSE ÉTABLIE, cas RAPPORTÉ (import incomplet, zéro scan pour un
+fichier qui en porte quatre), trous MESURÉS DANS LE DÉPÔT sur 260926.3. Les trois chemins
+rapportés n'écrivaient rien ; deux autres, oui. Un scan neuf lancé avant la première
+écriture : la clé des scans existait ici, la confrontation par clé ne la remettait pas, et
+le fichier passait de **4 scans à 1**. « Exporter mes données » sur le même fichier : **4 à
+0**, sans confrontation du tout. La règle proposée — refuser une écriture qui PERD une
+catégorie — laissait passer le premier : 4 → 1 ne perd pas la catégorie. Ce qui est posé
+compte séries, scans, portefeuilles et lignes sur ce qui est RÉELLEMENT écrit, par le
+compteur de l'examen (`compterBloc`, un seul pour les trois lecteurs), et refuse avant
+`close()` toute catégorie qui BAISSE sans geste de vidage. Le geste vit en séance et dans le
+registre des traces — mesuré par mutation : sans la copie persistée, un scan supprimé juste
+avant de fermer l'onglet était refusé à la séance suivante (règle 16).
+
+> **Une confrontation par CLÉ répond « est-elle là ? » ; la perte se mesure en « combien ».**
+> Le contenu d'un bloc peut rétrécir sous une clé qui ne bouge pas, et c'est exactement ce
+> qu'un scan neuf fait au bloc des scans.
+
 **ANGLE MORT, en tête de `confronterFichier` et répété ici** : la comparaison est par CLÉ —
 une valeur appauvrie des deux côtés (une ligne retirée d'un portefeuille) est une
 modification, et rien ne la distingue d'une perte ; elle a lieu une fois par fichier et
