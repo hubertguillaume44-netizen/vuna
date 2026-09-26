@@ -716,7 +716,7 @@
                pas de contrôle : c'est un <label> avec son champ invisible par-dessus,
                comme les zones du cadre MT5. -->
           <label class="btn btn-secondary" style="min-height:1.95rem;font-size:11.5px;padding-inline:11px;cursor:pointer;position:relative;display:inline-flex;align-items:center">
-            Fichier à importer<input type="file" accept="application/json,.json,.vuna,.vena,.sivula" onChange="{{ choisirImport }}" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+            Fichier à importer<input type="file" accept="application/json,.json,.vuna,.vena,.sivula" data-porte="tiroir · « Fichier à importer »" onClick="{{ importOuvert }}" onChange="{{ choisirImport }}" style="position:absolute;inset:0;opacity:0;cursor:pointer">
           </label>
         </div>
         <sc-if value="{{ aPersistMsg }}" hint-placeholder-val="{{ false }}">
@@ -724,6 +724,16 @@
         </sc-if>
         <sc-if value="{{ aOngletMsg }}" hint-placeholder-val="{{ false }}">
           <span style="font-size:11px;line-height:1.5;color:var(--color-accent-900)">{{ ongletMsg }}</span>
+        </sc-if>
+        <span id="vuna-import"></span>
+        <sc-if value="{{ aImpJournal }}" hint-placeholder-val="{{ false }}">
+          <div role="log" style="border-left:2px solid var(--color-accent);padding:6px 10px;display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase" class="text-muted">Journal de l’import — ce qui s’est passé, dans l’ordre</span>
+            <span style="font-size:11px;line-height:1.55;white-space:pre-line;font-variant-numeric:tabular-nums">{{ impJournalTxt }}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ aImpLecture }}" hint-placeholder-val="{{ false }}">
+          <span role="status" style="font-size:11.5px;line-height:1.5;color:var(--color-accent-900);font-variant-numeric:tabular-nums">{{ impLectureTxt }}</span>
         </sc-if>
         <sc-if value="{{ aSauvMsg }}" hint-placeholder-val="{{ false }}">
           <span style="font-size:11px;line-height:1.5;color:var(--color-accent-900)">{{ sauvMsg }}</span>
@@ -986,7 +996,7 @@
             <button class="btn btn-secondary" type="button" style="min-height:2rem;font-size:12px;padding-inline:12px" onClick="{{ basculerChiffrePan }}">{{ chiffreBoutonTxt }}</button>
             <label class="btn btn-secondary" style="min-height:2rem;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;position:relative;padding-inline:14px">
               Importer un fichier
-              <input type="file" accept="application/json,.json,.vuna,.vena,.sivula" onChange="{{ choisirImport }}" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+              <input type="file" accept="application/json,.json,.vuna,.vena,.sivula" data-porte="tiroir · « Importer un fichier »" onClick="{{ importOuvert }}" onChange="{{ choisirImport }}" style="position:absolute;inset:0;opacity:0;cursor:pointer">
             </label>
           </div>
           <sc-if value="{{ aChiffrePan }}" hint-placeholder-val="{{ false }}">
@@ -5940,7 +5950,7 @@
             <button class="btn btn-secondary" type="button" style="min-height:2rem;font-size:12px;padding-inline:11px" onClick="{{ ouvrirTiroir }}" title="Ouvre l'Intendance, où la sauvegarde chiffrée se prépare : phrase secrète, séries incluses ou non.">Sauvegarde chiffrée</button>
             <label class="btn btn-secondary" style="cursor:pointer;display:inline-flex;align-items:center;min-height:2rem;font-size:12px;padding-inline:11px">
               Réimporter
-              <input type="file" accept="application/json,.json,.vuna,.vena,.sivula" onChange="{{ importerTout }}" style="display:none">
+              <input type="file" accept="application/json,.json,.vuna,.vena,.sivula" data-porte="page Journal · « Réimporter »" onClick="{{ importOuvert }}" onChange="{{ importerTout }}" style="display:none">
             </label>
           </div>
           <!-- ————— D : LES DIX SÉRIES D'EXEMPLE SE MASQUENT, ELLES NE S'EFFACENT PAS —————
@@ -6598,6 +6608,10 @@ function texteDeSauvegarde(debut) {
 async function* lireSauvegardeAuFil(blob, options) {
   const toutes = !(options && options.valeurs === false);
   const choix = options && typeof options.garder === 'function' ? options.garder : null;
+  // `progres(octetsLus)` : appelé à chaque morceau lu — le seul endroit qui sache combien du
+  // fichier est passé, donc la seule source d'une progression qui ne soit pas devinée
+  const progres = options && typeof options.progres === 'function' ? options.progres : null;
+  let lus = 0;
   let garder = toutes;
   const lec = blob.stream().getReader();
   const dec = new TextDecoder();
@@ -6608,6 +6622,7 @@ async function* lireSauvegardeAuFil(blob, options) {
   try {
     for (;;) {
       const { done, value } = await lec.read();
+      if (!done && progres) { lus += value.byteLength; try { progres(lus); } catch (eP) {} }
       const t = done ? dec.decode() : dec.decode(value, { stream: true });
       const n = t.length;
       let i = 0;
@@ -10767,24 +10782,52 @@ GROUPES = {
   // compte deux fois de suite n'est pas une inattention, c'est une interface qui ne
   // demande rien avant de remplacer.
   async accepterBareme(cle, fichier) {
-    if (!fichier) return;
-    try {
-      const table = this.analyserBareme(await fichier.text());
-      if (!Object.keys(table).length) { this.setState({ baremeMsg: 'Aucune ligne lisible dans ce fichier.' }); return; }
-      const actuel = (this.baremes || {})[cle];
-      this._tableEnAttente = table;
-      // la confirmation VIENT au geste : le dépôt peut partir du champ nº 1, de la
-      // zone « tous vos CSV » ou d'un lâcher n'importe où sur la page — aucun
-      // emplacement fixe n'est « là où le geste est » pour les trois. Mesuré : rendue
-      // sous le cadre entier, elle tombait ~450 px sous la fenêtre, et un dépôt qui
-      // marchait se lisait « ça ne marche pas ».
-      this.setState({ confirmBareme: { cle, nom: fichier.name || 'ce fichier',
-        n: Object.keys(table).length,
-        nActuel: actuel ? Object.keys(actuel).length : 0 }, baremeMsg: null }, () => {
-        try { const el = document.getElementById('confirmBareme');
-          if (el) el.scrollIntoView({ block: 'nearest' }); } catch (e2) {}
-      });
-    } catch (e) { this.setState({ baremeMsg: 'Fichier illisible.' }); }
+    // ————— « FICHIER ILLISIBLE » RECOUVRAIT QUATRE CAUSES, ICI AUSSI —————
+    // Un seul `catch` rendait la même phrase pour un fichier que le navigateur refuse de
+    // lire, un fichier vide, et un défaut de l'analyse elle-même — l'attrape-tout que
+    // l'import des sauvegardes a quitté. Chaque étape échoue désormais sous son nom, et le
+    // geste qui n'a rien reçu le dit au lieu de rentrer sans un mot.
+    const nom = (fichier && fichier.name) || 'ce fichier';
+    if (!fichier) { this.setState({ baremeMsg: 'Aucun fichier n’est arrivé du sélecteur : rien n’a été lu.' }); return; }
+    let texte;
+    try { texte = await fichier.text(); } catch (e) {
+      this.setState({ baremeMsg: 'Le navigateur a refusé de lire « ' + nom + ' » (' + ((e && e.name) || 'erreur')
+        + ', ' + this.taille(fichier.size || 0) + ') : il a sans doute été modifié ou déplacé depuis que vous '
+        + 'l’avez choisi. Choisissez-le à nouveau.' });
+      return;
+    }
+    if (!texte.trim()) {
+      this.setState({ baremeMsg: '« ' + nom + ' » est vide (' + this.taille(fichier.size || 0) + ') : l’export qui '
+        + 'devait le remplir n’a pas abouti. Relancez le script de relevé dans MT5.' });
+      return;
+    }
+    let table;
+    try { table = this.analyserBareme(texte); } catch (e) {
+      const quoi = ((e && e.name) || 'Erreur') + (e && e.message ? ' : ' + e.message : '');
+      this.journaliserErreur('accepterBareme : ' + quoi);
+      this.setState({ baremeMsg: 'La lecture du relevé « ' + nom + ' » a échoué (' + quoi + ') : c’est un défaut '
+        + 'de Vuna, pas de votre fichier. Le diagnostic l’a noté.' });
+      return;
+    }
+    if (!Object.keys(table).length) {
+      const premiere = texte.replace(/^\uFEFF/, '').split(/\r?\n/)[0].slice(0, 60);
+      this.setState({ baremeMsg: 'Aucune ligne de relevé reconnue dans « ' + nom + ' » ; sa première ligne est « '
+        + premiere + ' ». Ce champ attend le fichier écrit par le script de relevé (Vuna_Releve) — '
+        + 'un export de bougies se dépose dans la zone des séries.' });
+      return;
+    }
+    const actuel = (this.baremes || {})[cle];
+    this._tableEnAttente = table;
+    // la confirmation VIENT au geste : le dépôt peut partir du champ nº 1, de la
+    // zone « tous vos CSV » ou d'un lâcher n'importe où sur la page — aucun
+    // emplacement fixe n'est « là où le geste est » pour les trois. Mesuré : rendue
+    // sous le cadre entier, elle tombait ~450 px sous la fenêtre, et un dépôt qui
+    // marchait se lisait « ça ne marche pas ».
+    this.setState({ confirmBareme: { cle, nom, n: Object.keys(table).length,
+      nActuel: actuel ? Object.keys(actuel).length : 0 }, baremeMsg: null }, () => {
+      try { const el = document.getElementById('confirmBareme');
+        if (el) el.scrollIntoView({ block: 'nearest' }); } catch (e2) {}
+    });
   }
   async poserBareme(cle, table) {
     try {
@@ -17990,7 +18033,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260926.2';
+  VERSION_APP = '260926.3';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
@@ -20170,7 +20213,7 @@ GROUPES = {
   // ce qu'elle a fait. Un tri silencieux sur treize fichiers est pire qu'un refus —
   // on ne sait pas ce qui est entré.
   async accepterTout(liste) {
-    if (!this.M || !liste || !liste.length) return;
+    if (!liste || !liste.length) return;
     // UNE SAUVEGARDE VUNA LÂCHÉE ICI PART DANS L'IMPORT, pas dans le tri des CSV.
     // Reconnue AVANT qu'on juge l'extension : par le nom, puis par l'enveloppe pour un
     // fichier renommé. Elle passe par `examinerImport`, donc par l'écran de
@@ -20185,7 +20228,7 @@ GROUPES = {
     }
     if (sauvegardes.length) {
       // une seule à la fois : l'écran de confrontation est unique, comme pour les relevés
-      await this.examinerImport(sauvegardes[0]);
+      await this.examinerImport(sauvegardes[0], null, 'dépôt d’un fichier');
       if (sauvegardes.length > 1 || reste.length) {
         this.setState({ sauvMsg: 'Sauvegarde « ' + sauvegardes[0].name + ' » ouverte.'
           + (sauvegardes.length > 1 ? ' Les ' + (sauvegardes.length - 1) + ' autres sauvegardes attendent : redéposez-les une par une.' : '')
@@ -20194,6 +20237,15 @@ GROUPES = {
       return;
     }
     liste = reste;
+    // le moteur se charge au démarrage : une sauvegarde n'en a pas besoin (elle est
+    // examinée plus haut), un CSV si. Ce retour était MUET — un dépôt dans la première
+    // seconde disparaissait sans un mot.
+    if (!this.M) {
+      this.setState({ messageDepot: liste.length + ' fichier' + (liste.length > 1 ? 's' : '')
+        + ' de bougies reçu' + (liste.length > 1 ? 's' : '') + ', mais le moteur de calcul n’est pas encore '
+        + 'chargé : redéposez dans un instant. Rien n’a été lu.' });
+      return;
+    }
     const releves = [], h1 = [], m1 = [], refus = [];
     this.setState({ depotEnCours: { fait: 0, total: liste.length, nom: liste[0].name },
       messageDepot: null });
@@ -20815,6 +20867,30 @@ GROUPES = {
         + 't été recréé' + (remplacees.size > 1 ? 's' : '') + ' ici depuis l’ouverture de la page, après la perte : '
         + 'la version du fichier l’a remplacé' + (remplacees.size > 1 ? 's' : '') + '.' : '') };
   }
+  // L'adresse qui écrit, telle que le navigateur la nomme (« null » pour un fichier ouvert
+  // en local : toutes les copies locales partagent donc la même, ce qui est juste).
+  origineIci() {
+    try { return String(location.origin); } catch (e) { return ''; }
+  }
+  // La signature d'un fichier de sauvegarde : son en-tête seulement — les 600 premiers
+  // octets, que l'écriture pose avant toute donnée. Rien d'autre n'est lu.
+  async signatureDuFichier(h) {
+    try {
+      const f = await h.getFile();
+      if (!f.size) return null;
+      const t = await f.slice(0, 600).text();
+      const champ = (n) => { const m = t.match(new RegExp('"' + n + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+        if (!m) return null; try { return JSON.parse('"' + m[1] + '"'); } catch (e) { return null; } };
+      return { origine: champ('origine'), date: champ('date') };
+    } catch (e) { return null; }
+  }
+  REFUS_AUTRE_ADRESSE(nom, sig) {
+    const quand = sig.date ? ' le ' + new Date(sig.date).toLocaleString('fr-FR').slice(0, 16) : '';
+    return 'Rien n’a été écrit dans ' + (nom || 'ce fichier') + ' : il a été écrit en dernier depuis '
+      + sig.origine + quand + ', et c’est désormais là qu’il vit. Cet onglet (' + this.origineIci()
+      + ') n’y écrit plus, pour ne pas y remettre un état plus ancien. Fermez-le — ou, si c’est bien ici '
+      + 'que vous travaillez désormais, choisissez à nouveau le fichier de sauvegarde.';
+  }
   // ce que des clés portent, en mots : les catégories, pas les noms de clés
   decrireCles(cles) {
     let series = 0, scans = 0, pfs = 0, autres = 0;
@@ -20833,6 +20909,8 @@ GROUPES = {
   async adopterFichierAuto(h) {
     try { await this.idbSet(h); } catch (e) {}
     this.handleAuto = h;
+    // le geste lève la garde de l'adresse pour l'écriture qui suit — et une seule
+    this._adopteIci = h;
     this._confronte = h;
     this._refusConfronte = null;
     // un fichier fraîchement choisi n'est plus « à rechoisir » : le bouton
@@ -20880,6 +20958,8 @@ GROUPES = {
         + 'Utilisez « Enregistrer une copie » après chaque séance.' });
       return;
     }
+    this.ouvrirJournal('« Choisir le fichier de sauvegarde »', 'sélecteur d’enregistrement ouvert — en attente de votre choix');
+    this.montrerImport();
     try {
       const h = await window.showSaveFilePicker({
         suggestedName: 'vuna-sauvegarde.json',
@@ -20898,18 +20978,25 @@ GROUPES = {
       // Un fichier vide ou neuf n'a rien à charger : il est adopté tout de suite.
       let f = null;
       try { f = await h.getFile(); } catch (e) {
+        this.journalImport('le navigateur refuse de relire « ' + (h.name || 'ce fichier') + ' » ('
+          + ((e && e.name) || 'erreur') + ') — rien n’a été écrit', 'alerte');
         this.setState({ autoMsg: 'Rien n’a été écrit dans ' + (h.name || 'ce fichier') + ' : le navigateur '
           + 'refuse de le relire (' + ((e && e.name) || 'erreur') + '). Choisissez-le à nouveau, ou un autre nom.' });
         return;
       }
+      this.journalImport('fichier choisi : « ' + (h.name || f.name) + ' » · ' + this.taille(f.size)
+        + (f.size ? ' — il existe : il sera LU, pas écrasé' : ' — neuf : il devient la sauvegarde automatique'));
       if (f.size) { await this.examinerImport(f, h); return; }
       await this.adopterFichierAuto(h);
       // sauverAuto pose lui-même autoMsg : null en cas de succès, et un message en
       // cas de refus — l'effacer ici essuyait le refus à l'instant où il venait
       // d'être dit, et l'écran ne changeait pas après le choix du fichier
       await this.sauverAuto(true);
+      this.journalApresEcriture(h);
     } catch (e) {
       const nom = (e && e.name) || '';
+      this.journalImport(nom === 'AbortError' ? 'sélecteur fermé sans fichier — rien n’a été choisi ni écrit'
+        : 'le choix du fichier a échoué (' + (nom || 'erreur inconnue') + ')', nom === 'AbortError' ? '' : 'alerte');
       // AbortError = l'utilisateur a fermé le sélecteur, rien à dire.
       // SecurityError / NotAllowedError = l'écriture dans un fichier est interdite dans
       // une vue intégrée (aperçu, iframe). Ce cas était avalé comme une annulation,
@@ -21104,7 +21191,12 @@ GROUPES = {
       const { etat } = await this.rechargerDepuisStockage();
       this.setState(etat);
       return h.name;
-    } catch (e) { return null; }
+    } catch (e) {
+      // la reprise répond « rien repris » et le message dit alors « perdu » : ce qui a
+      // empêché de relire le fichier se garde au diagnostic, au lieu de disparaître
+      this.journaliserErreur('repriseDepuisFichier : ' + ((e && e.name) || '') + ' ' + ((e && e.message) || e));
+      return null;
+    }
   }
   async reprendreFichierAuto() {
     const h = await this.idbGet();
@@ -21336,6 +21428,31 @@ GROUPES = {
       // Un refus n'est pas retenté à chaque minute — relire un fichier de plusieurs
       // centaines de mégaoctets pour refuser au même endroit ne sert à rien ; il l'est au
       // geste (`force`), comme la reprise après deux échecs.
+      // ————— UNE ADRESSE N'ÉCRIT PAS DANS UN FICHIER QU'UNE AUTRE A REPRIS —————
+      //
+      // La bascule venapp.fr → vuna.fr laisse souvent un onglet de l'ancienne adresse
+      // ouvert, et une redirection ne l'arrête pas (mesuré : le script d'une page déjà
+      // chargée continue de tourner ; seul un rechargement la redirige). Cet onglet a fait
+      // sa relecture au début de SA séance, donc chacun de ses gestes réécrivait SON état
+      // dans le fichier que vuna.fr venait de reprendre.
+      //
+      // Chaque écriture automatique signe donc le fichier de son adresse (`origine`), et
+      // avant d'écrire on lit la signature : un fichier écrit en dernier par une AUTRE
+      // adresse n'est plus le nôtre. Rien n'est écrit, et la phrase dit pourquoi et quoi
+      // faire. La seule façon de le reprendre est un GESTE — le choisir à nouveau —, qui
+      // lève la garde pour l'écriture qui suit, et celle-ci re-signe le fichier.
+      //
+      // Un fichier écrit avant cette version ne porte pas de signature : il est écrit comme
+      // avant. Et un onglet chargé AVANT cette version ne sait pas lire la signature :
+      // fermer les onglets de l'ancienne adresse reste l'étape de la procédure.
+      if (this._adopteIci === h) this._adopteIci = null;
+      else {
+        const sig = await this.signatureDuFichier(h);
+        if (sig && sig.origine && sig.origine !== this.origineIci()) {
+          this.setState({ autoAttente: true, autoMsg: this.REFUS_AUTRE_ADRESSE(h.name, sig) });
+          return;
+        }
+      }
       let remis = null;
       if (this._confronte !== h) {
         if (!force && this._refusConfronte === h) return;
@@ -21356,7 +21473,8 @@ GROUPES = {
       // au FIL, comme l'export : la chaîne unique du dump entier refaisait deux
       // fois le stockage en mémoire — chaque minute, à chaque sauvegarde
       await this.ecrireExportAu(w,
-        '"outil":"vuna","version":1,"date":' + JSON.stringify(new Date().toISOString()) + ',');
+        '"outil":"vuna","version":1,"date":' + JSON.stringify(new Date().toISOString()) + ','
+        + '"origine":' + JSON.stringify(this.origineIci()) + ',');
       await w.close();
       w = null;                       // fermé : le finally n'a plus rien à avorter
       this.oublierEffacees(effaceesAvant);
@@ -21823,10 +21941,37 @@ GROUPES = {
   // précisément chez ceux dont la sauvegarde est la plus lourde.
   async appliquerImport(mode) {
     const d = this.state.dlgImport;
-    if (!d) return;
+    if (!d) { this.journalImport('« ' + (mode === 'fusion' ? 'Fusionner' : 'Remplacer') + ' » sans fichier examiné — rien n’a été écrit', 'alerte'); return; }
     this.setState({ dlgImport: null });
-    const r = await this.ecrireDepuisSauvegarde(d.fichier, { mode });
-    const { nSeries, etat } = await this.rechargerDepuisStockage();
+    this.journalImport('« ' + (mode === 'fusion' ? 'Fusionner' : 'Remplacer') + ' » choisi — rechargement au fil…');
+    // le rechargement relit le fichier entier et écrit chaque bloc : 16 s mesurées sur
+    // 570 Mo. Le même principe que l'examen — la progression, pas le silence.
+    this.montrerImport();
+    const suivre = this.suiviLecture(d.fichier, 'charge');
+    let r, nSeries, etat;
+    try {
+      r = await this.ecrireDepuisSauvegarde(d.fichier, { mode, progres: suivre });
+      this.journalImport(r.n + ' blocs écrits dans ce navigateur'
+        + (r.sautes ? ', ' + r.sautes + ' déjà présents et conservés' : '')
+        + (r.echecs.length ? ', ' + r.echecs.length + ' REFUSÉS par le stockage (plein ?)' : ''), r.echecs.length ? 'alerte' : '');
+      if (r.erreur) this.journalImport(r.erreur, 'alerte');
+      this.setState({ impLecture: { nom: d.fichier.name, phase: 'remise', lus: 0, total: 0 } });
+      ({ nSeries, etat } = await this.rechargerDepuisStockage());
+    } catch (e) {
+      // le rechargement jetait dans une promesse que personne ne regardait : le fichier était
+      // à moitié repris, et l'écran ne disait rien
+      const quoi = ((e && e.name) || 'Erreur') + (e && e.message ? ' : ' + e.message : '');
+      this.journaliserErreur('appliquerImport : ' + quoi);
+      this.journalImport('ÉCHEC du rechargement — ' + quoi + (r ? ' (' + r.n + ' blocs déjà écrits)' : '')
+        + '. C’est un défaut de Vuna : gardez le fichier intact, rechargez la page, et réimportez.', 'alerte');
+      this.setState({ sauvMsg: 'Le rechargement a échoué en route (' + quoi + ') : c’est un défaut de Vuna. '
+        + 'Gardez le fichier intact ; le journal de l’import dit où ça s’est arrêté.' });
+      return;
+    } finally { this.setState({ impLecture: null }); }
+    const nL = etat.valides ? this.normValides(etat.valides).length : (this.state.valides || []).length;
+    const nP = etat.pfs ? etat.pfs.length : (this.state.pfs || []).length;
+    this.journalImport('ici maintenant : ' + (nSeries || 0) + ' séries remises en place · ' + nL
+      + ' lignes · ' + nP + ' portefeuilles');
     let msg = (mode === 'fusion' ? 'Fusion : ' : 'Remplacement : ') + r.n + ' blocs écrits'
       + (r.sautes ? ', ' + r.sautes + ' déjà présents et donc conservés' : '')
       + ' — fichier daté du ' + (d.date || '?') + '.'
@@ -21843,12 +21988,17 @@ GROUPES = {
       if (r.erreur || r.echecs.length) {
         msg += ' Le fichier n’est PAS devenu votre sauvegarde automatique : l’écrire '
           + 'maintenant lui retirerait ce qui n’a pas pu être rechargé.';
+        this.journalImport('le fichier n’est PAS devenu la sauvegarde automatique : tout n’a pas pu être rechargé', 'alerte');
       } else {
         await this.adopterFichierAuto(d.adopter);
       }
     }
     this.setState({ ...etat, sauvMsg: msg }, () => this.lancerTest());
-    if (d.adopter && !r.erreur && !r.echecs.length) await this.sauverAuto(true);
+    if (d.adopter && !r.erreur && !r.echecs.length) {
+      await this.sauverAuto(true);
+      this.journalApresEcriture(d.adopter);
+    }
+    this.journalImport('terminé');
   }
   // ————— ÉCRIRE DANS LE STOCKAGE DEPUIS UNE SAUVEGARDE, AU FIL —————
   // UNE fonction pour les trois chemins qui le font — l'import, la confrontation du fichier
@@ -21862,14 +22012,14 @@ GROUPES = {
   // Deux formes de valeur, sans date limite : un bloc lourd est un objet JSON (le format
   // courant) ou une chaîne qui en contient un (les exports d'avant 260915.12) ; une petite
   // clé est une chaîne JSON — la valeur du stockage, telle quelle.
-  async ecrireDepuisSauvegarde(fichier, { mode, seulement } = {}) {
+  async ecrireDepuisSauvegarde(fichier, { mode, seulement, progres } = {}) {
     const presentes = mode === 'fusion' ? await this.clesPresentes() : null;
     const aEcrire = (k) => (seulement ? seulement.has(k) : !(presentes && presentes.has(k)));
     let n = 0, sautes = 0, erreur = null;
     const echecs = [];
     try {
       for await (const x of lireSauvegardeAuFil(fichier,
-        { garder: (c, entete) => !entete && aEcrire(this.cleVersNeuf(c)) })) {
+        { garder: (c, entete) => !entete && aEcrire(this.cleVersNeuf(c)), progres })) {
         if (x.champ !== undefined) continue;
         const k = this.cleVersNeuf(x.cle);
         if (x.valeur === null) { if (!seulement) sautes++; continue; }
@@ -21963,8 +22113,55 @@ GROUPES = {
   //
   // `adopter` : la poignée choisie pour la sauvegarde automatique. Elle ne devient celle
   // de l'application qu'après « Fusionner » ou « Remplacer » — jamais avant le geste.
-  async examinerImport(fichier, adopter) {
-    if (!fichier) return;
+  async examinerImport(fichier, adopter, porte) {
+    if (!fichier) {
+      // un appel sans fichier était un retour muet : il se dit, puisqu'il ne devrait pas arriver
+      this.journalImport('aucun fichier transmis à l’examen — rien n’a été lu', 'alerte');
+      return;
+    }
+    // ————— LE GESTE RÉPOND DANS LA SECONDE, LÀ OÙ ON REGARDE —————
+    //
+    // RAPPORTÉ : « quand je fais Importer, rien ne se passe ». MESURÉ au rendu, sur 260922,
+    // 260926 et 260926.2, par le bouton « Importer mes données » du bandeau et un vrai
+    // sélecteur de fichier : l'examen avait lieu, l'écran « Ce fichier contient » était posé
+    // dans l'état — et il vit dans le tiroir, que ce bouton n'ouvrait pas. Un fichier REFUSÉ
+    // disait sa cause dans le bandeau ; un fichier VALIDE ne montrait rien. C'est le cas qui
+    // réussit qui avait l'air cassé.
+    //
+    // La réponse s'ouvre donc ICI, à la porte commune, et non sur un bouton : les six
+    // chemins qui mènent à l'examen — le bandeau, les deux champs du tiroir, « Réimporter »
+    // sur la page Journal, le dépôt d'un fichier, le choix du fichier automatique — passent
+    // tous par cette ligne, et un septième y passera sans rien apprendre. Et elle s'ouvre
+    // AVANT la lecture : un fichier de 570 Mo s'examine en 4 s, et quatre secondes de
+    // silence après un geste se lisent comme une panne — on recommence, ou on abandonne.
+    //
+    // Et chaque étape S'ÉCRIT À L'ÉCRAN, dans le journal de l'import : pas dans la console,
+    // que personne n'ouvre, mais là où une photo de l'écran la rapporte. La première ligne
+    // est l'accusé de réception, posée avant d'avoir lu un octet.
+    // un journal ouvert AU CLIC par cette même porte (« sélecteur ouvert ») se continue ;
+    // sinon ce geste en ouvre un neuf — un nouvel essai ne s'empile pas sur le précédent
+    if (porte && this._journalAttente !== porte) this.ouvrirJournal(porte);
+    this._journalAttente = null;
+    this.journalImport('fichier reçu : « ' + (fichier.name || 'sans nom') + ' » · ' + this.taille(fichier.size || 0)
+      + (fichier.lastModified ? ' · modifié le ' + new Date(fichier.lastModified).toLocaleString('fr-FR').slice(0, 16) : ''));
+    this.montrerImport();
+    try {
+      await this.examinerImportCorps(fichier, adopter);
+    } catch (e) {
+      // ————— LE DERNIER FILET NE SE TAIT PAS —————
+      // Ce qui jette ici n'est ni le fichier ni le navigateur — ceux-là ont leurs causes
+      // nommées plus bas : c'est Vuna. L'exception partait en promesse non tenue, dans une
+      // console que personne ne lit ; elle se dit désormais à l'écran, avec son nom.
+      const quoi = ((e && e.name) || 'Erreur') + (e && e.message ? ' : ' + e.message : '');
+      this.journaliserErreur('examinerImport : ' + quoi);
+      this.journalImport('ÉCHEC de l’examen — ' + quoi + '. C’est un défaut de Vuna, pas de votre fichier : gardez-le intact.', 'alerte');
+      this.setState({ sauvMsg: 'L’examen du fichier a échoué (' + quoi + ') : c’est un défaut de Vuna, pas de '
+        + 'votre fichier. Gardez-le intact ; le journal de l’import, dans le tiroir, dit où ça s’est arrêté.' });
+    } finally { this.setState({ impLecture: null }); }
+  }
+  async examinerImportCorps(fichier, adopter) {
+    const suivre = this.suiviLecture(fichier, 'examen');
+    this.journalImport('lecture au fil…');
     // ————— « FICHIER ILLISIBLE » RECOUVRAIT CINQ CAUSES, ET CHACUNE DEMANDE UN AUTRE GESTE —————
     //
     // Un seul `catch` rendait la même phrase pour un fichier vide, un fichier tronqué,
@@ -21977,10 +22174,12 @@ GROUPES = {
     // l'export l'écrit — la taille n'a plus de plafond. Les quatre autres causes restent
     // nommées, et elles se décident sur ce que le lecteur OBSERVE, jamais sur le libellé
     // d'une exception, qui change d'un navigateur à l'autre.
-    const ex = await this.examinerSauvegarde(fichier);
+    const ex = await this.examinerSauvegarde(fichier, suivre);
+    this.setState({ impLecture: null });
     // choisi pour la sauvegarde automatique, un fichier refusé le dit LÀ où on l'a choisi,
     // et dit qu'il n'est pas devenu la sauvegarde : rien n'y a été écrit
     if (!ex.ok) {
+      this.journalImport('refusé — ' + ex.msg, 'alerte');
       return this.setState(adopter
         ? { autoMsg: 'Rien n’a été écrit dans ' + (fichier.name || 'ce fichier') + ', et il n’est pas devenu '
           + 'votre sauvegarde automatique. ' + ex.msg + ' Pour la sauvegarde automatique, choisissez un autre nom de fichier.' }
@@ -21991,10 +22190,12 @@ GROUPES = {
     // en clair, qui n'est pas ce que la personne avait choisi de garder.
     if (ex.chiffre) {
       if (adopter) {
+        this.journalImport('fichier chiffré : il n’est pas adopté comme sauvegarde automatique', 'alerte');
         return this.setState({ autoMsg: 'Rien n’a été écrit dans ' + (fichier.name || 'ce fichier')
           + ' : c’est une sauvegarde CHIFFRÉE. Pour la recharger : « Importer mes données », '
           + 'avec sa phrase. Pour la sauvegarde automatique, choisissez un autre nom de fichier.' });
       }
+      this.journalImport('fichier chiffré : sa phrase secrète est demandée ci-dessous');
       this.setState({ dlgChiffre: { nom: fichier.name, objet: ex.chiffre, phrase: '', err: null } });
       return;
     }
@@ -22006,19 +22207,99 @@ GROUPES = {
       lignes: this.normValides(this.state.valides || []).length,
     };
     const c = ex.compte;
+    this.journalImport('en-tête : outil « ' + (ex.entete.outil || '?') + ' »'
+      + (ex.entete.date ? ', daté du ' + String(ex.entete.date).slice(0, 10) : ''));
+    this.journalImport(c.blocs + ' blocs lus · ' + c.series + ' séries · ' + c.scans + ' scans'
+      + (c.configs ? ' (' + c.configs + ' configurations)' : '') + ' · ' + c.pfs + ' portefeuilles · '
+      + c.lignes + ' lignes');
     this.setState({ dlgImport: {
       nom: fichier.name, date: (ex.entete.date || '').slice(0, 10),
       compte: c.comptes.map((x) => this.nomCourtier(x)).join(', '),
       blocs: c.blocs, series: c.series, scans: c.scans, configs: c.configs,
-      pfs: c.pfs, lignes: c.lignes, ici, fichier, adopter: adopter || null },
-      // l'écran de l'import vit dans le tiroir : choisi depuis la barre, il resterait fermé
-      ...(adopter ? { tiroir: true, tiroirOnglet: 'donnees' } : {}) });
+      pfs: c.pfs, lignes: c.lignes, ici, fichier, adopter: adopter || null } });
+    this.journalImport('à vous : « Fusionner », « Remplacer » ou « Annuler », juste en dessous');
+    // (le tiroir est déjà ouvert : `montrerImport`, en tête, pour TOUS les chemins — il ne
+    // l'était ici que pour le choix du fichier automatique, et c'était la moitié du défaut)
+  }
+  // ————— UN CHAMP DE FICHIER SE VIDE APRÈS CHAQUE CHOIX —————
+  // Un `<input type="file">` qui garde sa valeur ne signale RIEN quand on y choisit de
+  // nouveau le même fichier : le navigateur n'y voit pas de changement. Or c'est
+  // exactement le geste de quelqu'un dont le premier essai a paru muet — il recommence
+  // avec le même fichier. Tous les champs de fichier passent par ici : la liste est copiée
+  // AVANT de vider le champ, puisque le vider vide aussi sa liste.
+  fichiersDe(e) {
+    const t = e && e.target;
+    const l = t && t.files ? [...t.files] : [];
+    try { if (t) t.value = ''; } catch (eV) {}
+    return l;
+  }
+  // la réception d'un fichier de sauvegarde, pour toutes les portes à champ
+  recevoirImport(e, porte) {
+    const f = this.fichiersDe(e)[0];
+    if (!f) {
+      this.ouvrirJournal(porte || 'import', 'le sélecteur a rendu la main SANS fichier — rien n’a été lu', 'alerte');
+      this.montrerImport();
+      return;
+    }
+    return this.examinerImport(f, null, porte || 'import');
+  }
+  // ————— LE JOURNAL DE L'IMPORT : ce que le geste a fait, dans l'ordre, à l'écran —————
+  // Une photo de l'écran doit suffire à dire où un import s'est arrêté. La première ligne
+  // porte la version et la porte empruntée ; chaque étape ajoute une ligne horodatée.
+  ouvrirJournal(porte, premiere, ton) {
+    // un journal ouvert sur « sélecteur ouvert » attend son fichier : la réception le continue
+    this._journalAttente = /sélecteur .* ouvert/.test(premiere || '') ? porte : null;
+    const h = new Date().toLocaleTimeString('fr-FR');
+    const l = [{ h, txt: 'Vuna ' + this.VERSION_APP + ' · ' + porte, ton: '' }];
+    if (premiere) l.push({ h, txt: premiere, ton: ton || '' });
+    this.setState({ impJournal: l });
+  }
+  // ce que la première écriture dans le fichier automatique a donné, dit dans le journal
+  journalApresEcriture(h) {
+    const m = this.state.autoMsg;
+    this.journalImport(m ? 'sauvegarde automatique : ' + m
+      : 'sauvegarde automatique écrite dans « ' + ((h && h.name) || 'le fichier') + ' » — c’est désormais elle',
+    m && /Rien n’a été écrit|échoué|refus/.test(m) ? 'alerte' : '');
+  }
+  journalImport(txt, ton) {
+    const h = new Date().toLocaleTimeString('fr-FR');
+    this.setState((p) => ({ impJournal: [...(p.impJournal || []).slice(-39), { h, txt, ton: ton || '' }] }));
+  }
+  // Ouvrir l'endroit où l'import répond — le tiroir, onglet Données — et l'amener à l'écran.
+  montrerImport() {
+    this.setState({ tiroir: true, tiroirOnglet: 'donnees' }, () => {
+      try { const el = document.getElementById('vuna-import'); if (el) el.scrollIntoView({ block: 'start' }); } catch (e) {}
+    });
+  }
+  // L'état de la lecture en cours, mis à jour au plus cinq fois par seconde : un rendu par
+  // morceau de 64 Ko ferait de la progression le poste le plus lent de l'import.
+  suiviLecture(fichier, phase) {
+    const total = (fichier && fichier.size) || 0, nom = (fichier && fichier.name) || 'le fichier';
+    let dernier = 0;
+    this.setState({ impLecture: { nom, phase, lus: 0, total } });
+    return (lus) => {
+      const t = Date.now();
+      if (t - dernier < 200) return;
+      dernier = t;
+      this.setState({ impLecture: { nom, phase, lus, total } });
+    };
+  }
+  // La phrase, UNE : elle dit ce qui se passe, sur quel fichier, et où on en est.
+  texteLecture(l) {
+    if (!l) return '';
+    if (l.phase === 'remise') return 'Remise en place des séries, des scans et des portefeuilles…';
+    const verbe = l.phase === 'charge' ? 'Rechargement de' : 'Lecture de';
+    const total = l.total ? this.taille(l.total) : '';
+    if (!l.lus) return verbe + ' « ' + l.nom + ' »' + (total ? ' (' + total + ')' : '') + '…';
+    const pc = l.total ? Math.min(100, Math.floor(l.lus / l.total * 100)) : null;
+    return verbe + ' « ' + l.nom + ' » — ' + this.taille(l.lus) + (total ? ' sur ' + total : '')
+      + (pc !== null ? ' (' + pc + ' %)' : '') + '…';
   }
   // ————— L'EXAMEN, AU FIL : les comptes, jamais le contenu —————
   // Rend { ok:false, msg } — la cause nommée —, { ok:true, chiffre: objet } pour un fichier
   // chiffré, ou { ok:true, entete, compte }. Seules les valeurs qui se COMPTENT sont
   // assemblées — les scans et les portefeuilles ; une série n'est jamais lue ici.
-  async examinerSauvegarde(fichier) {
+  async examinerSauvegarde(fichier, progres) {
     if (!fichier || !fichier.size) {
       return { ok: false, msg: 'Ce fichier est vide (0 octet) : l’écriture qui devait le remplir '
         + 'n’a pas abouti. Il n’y a rien à recharger — cherchez une copie plus ancienne.' };
@@ -22032,7 +22313,7 @@ GROUPES = {
     const compte = (k) => k.startsWith('gros:' + this.CLE_SCAN) || k.startsWith(this.CLE_PF);
     try {
       for await (const x of lireSauvegardeAuFil(fichier,
-        { garder: (k, ent) => (ent ? true : compte(this.cleVersNeuf(k))) })) {
+        { garder: (k, ent) => (ent ? true : compte(this.cleVersNeuf(k))), progres })) {
         if (x.champ !== undefined) {
           let v = null;
           try { v = JSON.parse(x.valeur); } catch (e) { return { ok: false, msg: this.MSG_LECTURE('syntaxe', fichier) }; }
@@ -22065,7 +22346,11 @@ GROUPES = {
         if (m && !c.comptes.includes(m[1])) c.comptes.push(m[1]);
       }
     } catch (e) {
-      return { ok: false, msg: this.MSG_LECTURE(e && e.cause, fichier, e) };
+      // une cause de LECTURE est nommée ; toute autre exception est un défaut de l'examen
+      // lui-même, et elle remonte telle quelle au filet de `examinerImport` — la rendre
+      // en « le navigateur a refusé de lire » accuserait le fichier d'un défaut de Vuna
+      if (this.estErreurDeLecture(e)) return { ok: false, msg: this.MSG_LECTURE(e && e.cause, fichier, e) };
+      throw e;
     }
     if (chiffre) return { ok: true, chiffre: entete };
     if (!dansDonnees) {
@@ -22095,6 +22380,12 @@ GROUPES = {
         + '(champ « donnees » absent ou vide) : il n’y a rien à recharger.';
     }
     return null;
+  }
+  // Une erreur de LECTURE : une cause posée par le lecteur au fil, ou un refus du navigateur
+  // sur le flux du fichier. Tout le reste vient du code qui lit, pas du fichier lu.
+  estErreurDeLecture(e) {
+    if (e && ['vide', 'pasObjet', 'tronque', 'syntaxe'].includes(e.cause)) return true;
+    return !!(e && ['NotReadableError', 'NotFoundError', 'SecurityError', 'AbortError', 'NotAllowedError'].includes(e.name));
   }
   // La cause d'une lecture qui s'arrête, en quelques mots — pour les phrases qui la citent.
   causeLecture(e) {
@@ -22839,8 +23130,8 @@ GROUPES = {
               }
             : (e.action || (() => {})),
           pasFichiers: (ev) => {
-            const f = ev.target.files;
-            if (!f || !f.length) return;
+            const f = this.fichiersDe(ev);
+            if (!f.length) return;
             if (e.cle === 'releve') this.accepterBareme(this.compteActif, f[0]);
             else this.accepterFichiers([...f]);
           },
@@ -23573,11 +23864,23 @@ GROUPES = {
           // s'efface — deux boutons pour la même intention étaient le défaut
           aReautoriser: !!s.autoAttente && !s.autoARechoisir && !(montrer && !(reduit || integre)),
           sansSauvExporter: async () => { await this.exporterTout(); },
+          // Le champ est ATTACHÉ au document le temps du choix : un champ détaché peut être
+          // ramassé avant que le sélecteur rende la main, et son `change` ne part alors
+          // nulle part — un geste perdu sans un mot. Le journal s'ouvre AU CLIC : si rien
+          // ne suit « sélecteur ouvert », c'est que le choix n'est jamais arrivé, et la
+          // photo de l'écran le dit.
           sansSauvImporter: () => {
+            const porte = 'bandeau · « Importer mes données »';
+            this.ouvrirJournal(porte, 'sélecteur de fichier ouvert — en attente de votre choix');
+            this.montrerImport();
             const inp = document.createElement('input');
             inp.type = 'file';
             inp.accept = 'application/json,.json,.vuna,.vena,.sivula';
-            inp.onchange = () => { const f2 = inp.files && inp.files[0]; if (f2) this.examinerImport(f2); };
+            inp.style.display = 'none';
+            const fin = () => { try { inp.remove(); } catch (e) {} };
+            inp.addEventListener('change', (e) => { this.recevoirImport(e, porte); fin(); });
+            inp.addEventListener('cancel', () => { this.journalImport('sélecteur fermé sans fichier — rien n’a été lu'); fin(); });
+            document.body.appendChild(inp);
             inp.click();
           },
           // la même trace, pour le tiroir Intendance — lisible même quand le pied ne
@@ -23875,7 +24178,7 @@ GROUPES = {
         this.setState({ survol: false });
         this.accepterTout([...(e.dataTransfer.files || [])]);
       },
-      surChoix: (e) => this.accepterFichiers([...(e.target.files || [])]),
+      surChoix: (e) => this.accepterFichiers(this.fichiersDe(e)),
       // le palier gratuit, dit AVANT le dépôt : « 3 sur 3 instruments personnels »
       // évite de préparer douze fichiers pour se les voir refuser en bloc
       ...(() => {
@@ -23892,8 +24195,8 @@ GROUPES = {
           palierCompteurFin: plein2 ? '.' : '',
           palierCouleur: plein2 ? 'var(--color-accent-700)' : 'var(--color-neutral-700)' };
       })(),
-      surChoixM1: (e) => this.deposerBougiesM1([...(e.target.files || [])]),
-      surChoixTout: (e) => this.accepterTout([...(e.target.files || [])]),
+      surChoixM1: (e) => this.deposerBougiesM1(this.fichiersDe(e)),
+      surChoixTout: (e) => this.accepterTout(this.fichiersDe(e)),
       survol: s.survol,
       // La zone de dépôt n'occupe plus le haut de la page : le glisser-déposer couvre
       // toute la vue, et son cadre ne se dessine qu'au survol d'un fichier.
@@ -23920,9 +24223,12 @@ GROUPES = {
           sauvQuand: !t ? 'Aucune copie enregistrée — rien de ce qui est ici n’existe ailleurs.'
             : 'Dernière sauvegarde : ' + (j === 0 ? 'aujourd’hui' : j === 1 ? 'hier' : 'il y a ' + j + ' jours') + '.',
           sauvCouleur: (!t || j > 30) ? 'var(--color-accent-700)' : 'var(--color-neutral-500)',
-          choisirImport: (e) => { const f = e.target.files && e.target.files[0];
-            if (f) this.examinerImport(f); e.target.value = ''; },
+          choisirImport: (e) => this.recevoirImport(e, e.target && e.target.dataset && e.target.dataset.porte),
           aDlgImport: !!d,
+          aImpLecture: !!s.impLecture,
+          aImpJournal: !!(s.impJournal && s.impJournal.length),
+          impJournalTxt: (s.impJournal || []).map((l) => l.h + '  ' + l.txt).join('\n'),
+          impLectureTxt: this.texteLecture(s.impLecture),
           impNom: d ? d.nom : '',
           impQuoi: d ? (d.date ? 'daté du ' + d.date + ' · ' : '')
             + (d.compte ? 'compte ' + d.compte + ' · ' : '')
@@ -23940,10 +24246,10 @@ GROUPES = {
           impRemplaceAide: 'Écrase l’espace actuel par le contenu du fichier. Ce que vous avez ici et qui n’est pas dans le fichier est perdu.',
           fusionnerImport: () => this.appliquerImport('fusion'),
           remplacerImport: () => this.appliquerImport('remplace'),
-          annulerImport: () => this.setState(d && d.adopter
+          annulerImport: () => (this.journalImport('« Annuler » — rien n’a été écrit'), this.setState(d && d.adopter
             ? { dlgImport: null, autoMsg: 'Rien n’a été écrit dans ' + (d.nom || 'ce fichier')
               + ' : il n’est pas devenu votre sauvegarde automatique.' }
-            : { dlgImport: null }),
+            : { dlgImport: null })),
           aImpAdopte: !!(d && d.adopter),
           impAdopte: d && d.adopter ? 'Vous avez choisi ce fichier pour la sauvegarde automatique : il est LU, '
             + 'pas écrasé. Fusionner ou Remplacer le charge ici, puis il devient votre sauvegarde — et la '
@@ -26448,7 +26754,7 @@ GROUPES = {
       btDureeMaxVal: Number(s.btDureeMax) || 0,
       setDureeMax: (e) => this.maj({ btDureeMax: Math.max(0, Math.round(Number(e.target.value) || 0)) }),
       setDelai: (e) => this.maj({ btDelai: Number(e.target.value) }),
-      deposerJournal: (e) => this.deposerJournal(e.target.files && e.target.files[0]),
+      deposerJournal: (e) => this.deposerJournal(this.fichiersDe(e)[0]),
       confEtat: s.confMsg || (s.conf
         ? s.conf.communs + ' journées comparées sur ' + s.conf.sym
         : 'aucun journal déposé'),
@@ -30005,7 +30311,7 @@ GROUPES = {
       // le relevé déposé va toujours au compte actif : plus de choix à faire
       deposerReleve: (e) => this.accepterBareme(
         this.compteActif === 'tous' ? this.COURTIERS[0][0] : this.compteActif,
-        e.target.files && e.target.files[0]),
+        this.fichiersDe(e)[0]),
       // un onglet par compte, sous la barre des vues. En ajouter un se fait en ajoutant
       // une ligne à COURTIERS ; le libellé par défaut ne nomme aucun courtier.
       // Un compte n'apparaît dans la liste que s'il porte un relevé — ou s'il est celui
@@ -31422,8 +31728,9 @@ GROUPES = {
       // TOUS les points d'import passent par l'examen — le tiroir ici, l'arrivée,
       // et le bandeau de perte : celui-ci écrasait encore en silence, et c'est le
       // même fichier, le même danger.
-      importerTout: (e) => { const f = e.target.files && e.target.files[0];
-        if (f) this.examinerImport(f); e.target.value = ''; },
+      importerTout: (e) => this.recevoirImport(e, 'page Journal · « Réimporter »'),
+      importOuvert: (e) => this.ouvrirJournal((e.currentTarget && e.currentTarget.dataset
+        && e.currentTarget.dataset.porte) || 'import', 'sélecteur de fichier ouvert — en attente de votre choix'),
       sauvMsg: s.sauvMsg || '',
       aSauvMsg: !!s.sauvMsg,
       nCumulTxt: (s.archives && s.archives.length)

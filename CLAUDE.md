@@ -6821,7 +6821,9 @@ sur d'autres surfaces :
 
 - `baremeMsg: 'Fichier illisible.'` dans l'import du relevé de courtier : un seul `catch`
   pour toutes les causes, la forme que l'examen des sauvegardes a fermée pour elles.
-  **Toujours ouvert.**
+  **Fermé en 260926.3** : cinq causes, cinq phrases — aucun fichier reçu, lecture refusée,
+  fichier vide, aucune ligne reconnue (avec sa première ligne), défaut de l'analyse.
+  `releve-illisible-dit-pourquoi` les tient, ancrée sur l'absence de l'attrape-tout.
 - `importerTout(fichier)`, **la méthode**, est supprimée en 260926.2 : plus aucun
   appelant, et elle écrivait sans examen, sous l'ancien message. Cartographie faite, aucune
   garde ne s'y accrochait. **Le NOM, lui, reste dans l'artefact, et c'est normal** : c'est

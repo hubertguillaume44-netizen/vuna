@@ -101,8 +101,13 @@ test("le bandeau de perte porte les trois gestes, avec exactement un accent", ()
   assert.ok(APP.includes("aSansSauvExporter: !(montrer && (reduit || integre)),"),
     "le filet d'export ne suit plus la règle « un seul bouton de ce nom » : il doit "
     + "s'effacer exactement quand l'ACCENT porte déjà son nom, et jamais autrement");
+  // réancrée en 260926.3 (règle 14) : le bandeau passe par `recevoirImport`, la porte de
+  // TOUS les sélecteurs d'import, qui vide le champ et ouvre l'examen — l'invariant est la
+  // chaîne entière, donc les deux maillons sont lus
   const iImp = APP.indexOf("sansSauvImporter: () => {");
-  assert.ok(iImp > 0 && APP.slice(iImp, iImp + 400).includes("this.examinerImport("),
+  const iRec = APP.indexOf("  recevoirImport(e, porte) {");
+  assert.ok(iImp > 0 && APP.slice(iImp, iImp + 900).includes("this.recevoirImport(")
+    && iRec > 0 && APP.slice(iRec, iRec + 500).includes("this.examinerImport("),
     "l'import du bandeau n'ouvre plus le circuit de l'examen : un point d'import "
     + "qui écrase en silence est le danger que l'examen a fermé — tous y passent");
 });

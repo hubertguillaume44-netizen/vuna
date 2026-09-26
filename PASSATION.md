@@ -385,9 +385,12 @@ comme sauvegarde automatique : il se recharge par « Importer mes données ».
 
 1. **Vérifier la version EN LIGNE aux deux adresses** — le numéro du pied de page, pas le
    tableau de bord Netlify (la publication peut être verrouillée : une construction verte
-   ne prouve pas une mise en ligne). Il faut **260926.2 ou après** aux DEUX : c'est la
-   première version qui ne remplace jamais le fichier par moins que ce qu'il porte, qui le
-   relit au fil, et dont « Choisir » charge au lieu d'écrire.
+   ne prouve pas une mise en ligne). Il faut **260926.3 ou après** aux DEUX : 260926.2 est
+   la première qui ne remplace jamais le fichier par moins que ce qu'il porte, qui le relit
+   au fil, et dont « Choisir » charge au lieu d'écrire ; 260926.3 est la première dont
+   l'import RÉPOND à l'écran (sur 260926.2, « Importer mes données » ouvrait l'examen dans
+   le tiroir fermé : rien ne se voyait) et dont un onglet cesse d'écrire dans un fichier
+   repris par une autre adresse.
 2. **Sur venapp.fr/app, dans le navigateur qui porte les données** : la sauvegarde
    automatique doit être à jour — le pied dit « il y a N min ». S'il n'y en a pas encore,
    « Choisir le fichier de sauvegarde », un nom neuf : c'est LE fichier.
@@ -399,7 +402,11 @@ comme sauvegarde automatique : il se recharge par « Importer mes données ».
    onglet a déjà fait sa relecture du fichier au début de sa séance : il écrirait SON état,
    retirant du fichier ce que vuna.fr y a ajouté et remettant ses anciennes valeurs sur les
    clés communes. vuna.fr les réécrirait à sa prochaine écriture, mais d'ici là le fichier
-   est en retard sur les données.
+   est en retard sur les données. **Depuis 260926.3, un onglet s'arrête de lui-même** :
+   chaque écriture signe le fichier de son adresse, et un onglet n'écrit pas dans un
+   fichier signé par une AUTRE — il le dit dans le tiroir (« Rien n'a été écrit… Fermez-le »).
+   Mais seul un onglet chargé en 260926.3 ou après sait lire cette signature : un onglet
+   ouvert AVANT la mise en ligne l'ignore. L'étape reste donc entière.
 4. **Sur vuna.fr/app : « Choisir le fichier de sauvegarde », et désigner CE fichier.** Il
    est lu, pas écrasé : l'écran de l'import donne ses comptes (séries, scans, lignes) —
    les comparer à ceux de venapp.fr —, puis « Fusionner ». Il devient la sauvegarde

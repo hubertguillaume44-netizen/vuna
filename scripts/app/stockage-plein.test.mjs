@@ -243,7 +243,7 @@ test("le tri du dépôt route la sauvegarde AVANT de juger l’extension", () =>
   assert.ok(routage > 0, "le dépôt ne reconnaît pas une sauvegarde");
   assert.ok(classement > 0, "le classement des CSV a disparu");
   assert.ok(routage < classement, "l’extension est jugée avant la reconnaissance");
-  assert.match(corps, /examinerImport\(sauvegardes\[0\]\)/,
+  assert.match(corps, /examinerImport\(sauvegardes\[0\][,)]/,
     "la sauvegarde ne part pas dans le circuit d’import");
 });
 
