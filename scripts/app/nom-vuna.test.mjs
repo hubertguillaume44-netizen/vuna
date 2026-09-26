@@ -45,7 +45,7 @@ test("l’ancien nom ne survit que dans la migration et l’import de sauvegarde
     /"simula\.runs\.v1"|"simula\.onb\.v1"|"simula\.uploads\.v1"/,
     // l'import d'une sauvegarde ancienne, sans date limite — reconnaissance comprise :
     // un fichier que l'application a écrit ne doit jamais être refusé par elle
-    /b\.outil !== 'simula'|b\.outil !== "simula"|sivula_chiffre|\.vuna,\.sivula/,
+    /b\.outil !== 'simula'|b\.outil !== "simula"|sivula_chiffre|\.vuna,(?:\.vena,)?\.sivula/,
     /EXT_SAUVEGARDE = |'"outil":"simula"'|accept="application\/json/,
     // LE REPLI DE LECTURE : il traduit le nom neuf vers l'ancien, c'est son objet même
     /cleVersAncien|« vena\.X » → « simula\.X »|\^\(vuna\|simula\)|replace\(\/\^vuna\\\.\//,

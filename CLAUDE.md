@@ -7023,3 +7023,68 @@ libellés exige de voir la formule neuve ; celle des unités exige quatre unité
 forme la chose serait présente**. Ce dépôt produit trois artefacts qui ne sont pas des
 sources — le solo (base64 pour les modules), `dist/app/index.html`, et le `.ex5` que
 l'utilisateur compile. Aucun des trois ne se lit au grep comme du code.
+
+## Un bouton qui accueille quelqu'un SANS ses données ne peut pas ÉCRIRE
+
+**STATUT · CAUSE ÉTABLIE — symptôme RAPPORTÉ (« Fichier illisible. » sur
+`vena-sauvegarde.json`, à la veille d'un passage de venapp.fr à vuna.fr, version publiée
+non identifiée : le réseau de la session refuse les deux adresses), écrasement, plafond de
+lecture et causes MESURÉS DANS LE DÉPÔT, au rendu, sur le fichier livré.**
+
+Le bandeau qu'affiche un navigateur vide porte trois gestes, et l'accent est sur
+« Choisir le fichier de sauvegarde ». **Choisir** est ambigu : charger, ou désigner où
+écrire. C'était le second. Mesuré : un fichier de cinq blocs, choisi depuis un navigateur
+en essai, n'en portait plus qu'un — la session vide. `sauverAuto` écrit `dumpComplet()`,
+tout le stockage de CE navigateur sur CETTE adresse, et ne regardait pas ce que le fichier
+portait. La boîte « remplacer ? » de Chrome ne protège pas celui qui croit charger.
+
+> **La personne que ce bandeau accueille est exactement celle pour qui l'écriture
+> détruit** : si elle avait ses données, elle n'aurait pas besoin de sa sauvegarde. Un
+> geste offert au moment de la perte doit être sûr pour quelqu'un qui n'a PLUS rien.
+
+**La garde vit à la frontière d'écriture, pas sur le bouton** : la réécriture de chaque
+minute suit le même chemin, et un navigateur vidé écrasait aussi au premier battement.
+Elle décide sur ce qui a été ÉCRIT, juste avant `close()` — le seul geste irréversible :
+une écriture qui ne porte aucun bloc lourd (série ou scan) ne remplace jamais un fichier
+qui en porte. `abort()` laisse l'original intact.
+
+**SA PREMIÈRE FORME COMPARAIT DES TAILLES, et le banc l'a fait passer au vert sur
+l'écrasement même qu'elle visait.** La session vide de l'essai pèse 3 025 octets ; la
+sauvegarde du banc, 370. « Le fichier est plus gros que ce qu'on écrit » était un
+substitut du contenu — la règle 1, dans la garde écrite contre elle. La prise est
+désormais la même des deux côtés : des clés `gros:`, comptées dans le puits de l'export et
+cherchées au fil dans le fichier. Et le premier passage du banc avait rendu « zéro
+écriture » pour une raison qui n'était pas le produit — un faux handle n'est pas clonable
+dans IndexedDB — : le message rendu le disait (`DataCloneError`), et c'est lui qui a
+empêché de conclure.
+
+### L'export écrit au fil ; l'import lisait d'un bloc — le produit refusait ses propres fichiers
+
+`ecrireExportAu` a été écrit AU FIL précisément parce que le dump dépassait la plus
+longue chaîne d'un navigateur. `examinerImport` relisait par `await fichier.text()`. Mesuré
+sur Chromium : 461 373 606 octets se lisent, 482 345 126 non — et une sauvegarde Véna
+**valide** de 587 Mo rendait « Fichier illisible. ».
+
+> **Deux chemins qui portent le même format doivent avoir le même plafond.** Le registre
+> promet qu'« un fichier que cette application a écrit ne doit jamais être refusé par
+> elle » ; l'asymétrie le violait pour les seuls utilisateurs qui ont le plus à perdre.
+
+**Ce qui est livré ne ferme PAS ce trou, et c'est écrit ici** : le message nomme la
+taille et dit de garder le fichier intact. Le lecteur au fil — le pendant exact de
+`ecrireExportAu` — est la réparation, et elle reste à faire.
+
+### « Fichier illisible » recouvrait cinq causes ; le rapport en nommait quatre, dont deux fausses
+
+| la cause proposée | ce qui était rendu, mesuré |
+|---|---|
+| JSON invalide | « Fichier illisible. » — tronqué ou abîmé au milieu |
+| fichier vide | « Fichier illisible. » |
+| version inconnue | **n'existe pas** : `version` n'est lu nulle part |
+| espace fermé | **n'existe pas à l'examen** : une enveloppe `vena` s'examine sous les deux formats |
+| *(non listée)* **trop long** | « Fichier illisible. » — sur un fichier VALIDE |
+
+La seule cause qui touche un fichier sain est celle que personne n'avait listée. Chaque
+étape échoue désormais sous son nom, et la cause se décide sur ce qui est OBSERVÉ — la
+taille, le premier et le dernier caractère —, jamais sur le libellé d'une exception, qui
+change d'un navigateur à l'autre. `sauvegarde-illisible-dit-pourquoi.test.mjs` et
+`sauvegarde-jamais-ecrasee-par-rien.test.mjs` tiennent les deux, trois mutations chacune.

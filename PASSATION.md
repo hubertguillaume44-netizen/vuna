@@ -342,6 +342,55 @@ passent avant les redirections.
 mécanisme d'exclusion, la fermeture quand la variable manque, et l'unicité de la
 déclaration.
 
+## Changer d'adresse (venapp.fr → vuna.fr) — À LIRE AVANT D'ACTIVER LA REDIRECTION
+
+**Ce qui est MESURÉ dans le dépôt** (au rendu, sur le fichier livré) : ce que l'import
+accepte, ce que « Choisir le fichier de sauvegarde » écrit, et où la lecture d'un fichier
+échoue. **Ce qui est un fait des navigateurs, non mesuré ici** : le stockage est cloisonné
+par adresse.
+
+**Rien de ce que le navigateur garde ne suit l'adresse.** Sur vuna.fr, l'application
+s'ouvre vide : séries, scans, portefeuilles, journal — et aussi **la clé de licence**
+(`vena.licence.v1`), **le verrou propriétaire** (`vena.acces.perso.v1`) et **le fichier de
+sauvegarde automatique déjà choisi**, dont l'autorisation vit dans le stockage de
+l'ancienne adresse. Les deux premiers ne font PAS partie d'une sauvegarde : ils se
+ressaisissent.
+
+**Une redirection n'efface rien : elle rend les données INJOIGNABLES.** Plus aucune page
+de venapp.fr ne s'exécute pour les lire. Elles redeviennent lisibles le jour où l'on
+retire la redirection, pas avant. Le seul pont est donc un **fichier**, et il se fait
+AVANT.
+
+**L'ordre, et chaque étape a sa raison :**
+
+1. **Vérifier la version EN LIGNE aux deux adresses** — le numéro du pied de page, pas le
+   tableau de bord Netlify (la publication peut être verrouillée : une construction verte
+   ne prouve pas une mise en ligne). Il faut **260926 ou après** : c'est la première version
+   qui refuse d'écraser une sauvegarde par un navigateur vide, et qui dit pourquoi un
+   fichier ne se relit pas.
+2. **Sur venapp.fr/app, dans le navigateur qui porte les données** : « Enregistrer une
+   copie ». Noter la taille du fichier.
+3. **Si elle dépasse ~440 Mo : ARRÊT.** Aucune version ne sait aujourd'hui la relire — l'import
+   lit le fichier d'un bloc, et Chromium refuse au-delà d'un seuil mesuré entre 461 et 482
+   millions d'octets (l'export, lui, écrit au fil et n'a pas de plafond). Ne pas rediriger
+   tant qu'un lecteur au fil n'existe pas.
+4. **Sur vuna.fr/app : « Importer mes données »** — jamais « Choisir le fichier de
+   sauvegarde », qui désigne une DESTINATION d'écriture. Le dialogue d'examen donne les
+   comptes (séries, scans, lignes) : les comparer à ceux de venapp.fr, puis « Remplacer ».
+5. **Ressaisir la clé de licence** ; rouvrir le verrou propriétaire si les données étaient
+   dans l'espace personnel — le tiroir Intendance dit quel espace porte le poids.
+6. **Choisir le fichier de sauvegarde automatique sur vuna.fr**, de préférence sous un nom
+   neuf.
+7. **Alors seulement, activer la redirection.** Ne pas vider les données du site venapp.fr
+   dans le navigateur pendant les premières semaines : c'est la copie de secours qui ne
+   coûte rien.
+
+**Ce qui se passait avant 260926, et qui rendait l'étape 4 dangereuse** : sur une adresse
+neuve, le geste naturel — « mon fichier de sauvegarde est là, je le choisis » — prenait le
+bouton « Choisir le fichier de sauvegarde », qui ÉCRIVAIT le stockage vide du navigateur
+dans le fichier choisi. Mesuré : cinq blocs devenus un seul. C'est désormais refusé, avec
+le geste d'import nommé ; `scripts/app/sauvegarde-jamais-ecrasee-par-rien.test.mjs` le tient.
+
 ## Deux chaînes de travail sur le même dépôt : d'où viennent les régressions
 
 Le site public et l'application de mesure n'avancent pas toujours par le même canal, et

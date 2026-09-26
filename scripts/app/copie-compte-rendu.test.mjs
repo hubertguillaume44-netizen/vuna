@@ -68,7 +68,7 @@ test("aucun compteur de copie n'est lu dans l'état — structurel", () => {
   assert.match(corpsE, /nC \+= nCbloc \|\| 0;/,
     "le bilan ne totalise plus les configurations livrées par le générateur : d'où "
     + "viendrait « nC » ?");
-  assert.match(corpsE, /return \{ n, octets: [^}]*nS, nC \};/,
+  assert.match(corpsE, /return \{ n, octets: [^}]*\bnS, nC\b[^}]*\};/,
     "ecrireExportAu ne rend plus nS et nC : le compte rendu n'a plus de source dérivée");
   // ————— ET LES TROIS NOMBRES ONT LA MÊME SOURCE —————
   // C'est le mélange qui a rendu le défaut invisible : la taille venait du flux et
