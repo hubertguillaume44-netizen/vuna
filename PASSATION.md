@@ -361,43 +361,52 @@ de venapp.fr ne s'exécute pour les lire. Elles redeviennent lisibles le jour o�
 retire la redirection, pas avant. Le seul pont est donc un **fichier**, et il se fait
 AVANT.
 
-**AVANT TOUT : COPIER LE FICHIER DE SAUVEGARDE AILLEURS, SOUS UN AUTRE NOM.** Mesuré le
-26/09/2026 : la réécriture automatique part **sans aucun clic** dès qu'un navigateur a
-gardé la poignée du fichier et son autorisation. Sur une version antérieure à 260926, un
-navigateur vide l'a écrasé en deux secondes ; et même sur 260926, un navigateur dont seul
-le stockage local a été vidé l'écrase en perdant les portefeuilles. Une COPIE posée
-ailleurs n'a de poignée dans aucun navigateur : aucune version ne peut l'écrire sans
-qu'on la choisisse.
+**UNE SEULE SAUVEGARDE, À UN SEUL ENDROIT — et c'est le produit qui la protège.** Cette
+section demandait, jusqu'à 260926, de copier le fichier ailleurs sous un autre nom. C'était
+un contournement : il demandait à l'utilisateur de protéger son fichier contre le produit.
+Depuis 260926.2, le fichier de sauvegarde automatique tient trois garanties, mesurées au
+rendu (`sauvegarde-jamais-ecrasee-par-rien`, `sauvegarde-lue-par-morceaux`,
+`sauvegarde-illisible-dit-pourquoi`) :
+
+| la garantie | ce qui la tient |
+|---|---|
+| il n'est jamais remplacé par un état **moins complet** sans un geste | avant la première écriture d'une séance, le fichier est relu ; ce qu'il porte et que le navigateur n'a plus — sans l'avoir SUPPRIMÉ, ce que dit une trace posée à chaque suppression — est remis dans le navigateur, puis écrit. Une clé qui ne peut pas être remise : rien n'est écrit |
+| il se relit **quelle que soit sa taille** | lecture au fil, comme l'écriture. Mesuré : 570 Mo examinés en 4 s et rechargés en 16 s, 120 séries et le portefeuille |
+| « Choisir le fichier de sauvegarde » sur un fichier existant le **charge** | l'écran de l'import s'ouvre ; c'est « Fusionner » ou « Remplacer » qui en fait la sauvegarde automatique. « Annuler » ne touche à rien |
+
+**Ce qu'elles ne couvrent pas, et il faut le savoir avant de basculer** : la comparaison
+est PAR CLÉ — une clé présente des deux côtés est prise dans le navigateur. Deux adresses
+(ou deux navigateurs) qui écrivent le MÊME fichier s'y relaient donc, et sur une clé
+commune c'est la dernière qui écrit qui gagne. D'où l'étape 5 : on ne travaille plus sur
+venapp.fr une fois le fichier repris sur vuna.fr. Un fichier CHIFFRÉ n'est jamais choisi
+comme sauvegarde automatique : il se recharge par « Importer mes données ».
 
 **L'ordre, et chaque étape a sa raison :**
 
 1. **Vérifier la version EN LIGNE aux deux adresses** — le numéro du pied de page, pas le
    tableau de bord Netlify (la publication peut être verrouillée : une construction verte
-   ne prouve pas une mise en ligne). Il faut **260926 ou après** : c'est la première version
-   qui refuse d'écraser une sauvegarde par un navigateur vide, et qui dit pourquoi un
-   fichier ne se relit pas.
-2. **Sur venapp.fr/app, dans le navigateur qui porte les données** : « Enregistrer une
-   copie ». Noter la taille du fichier.
-3. **Si elle dépasse ~440 Mo : ARRÊT.** Aucune version ne sait aujourd'hui la relire — l'import
-   lit le fichier d'un bloc, et Chromium refuse au-delà d'un seuil mesuré entre 461 et 482
-   millions d'octets (l'export, lui, écrit au fil et n'a pas de plafond). Ne pas rediriger
-   tant qu'un lecteur au fil n'existe pas.
-4. **Sur vuna.fr/app : « Importer mes données »** — jamais « Choisir le fichier de
-   sauvegarde », qui désigne une DESTINATION d'écriture. Le dialogue d'examen donne les
-   comptes (séries, scans, lignes) : les comparer à ceux de venapp.fr, puis « Remplacer ».
-5. **Ressaisir la clé de licence** ; rouvrir le verrou propriétaire si les données étaient
+   ne prouve pas une mise en ligne). Il faut **260926.2 ou après** aux DEUX : c'est la
+   première version qui ne remplace jamais le fichier par moins que ce qu'il porte, qui le
+   relit au fil, et dont « Choisir » charge au lieu d'écrire.
+2. **Sur venapp.fr/app, dans le navigateur qui porte les données** : la sauvegarde
+   automatique doit être à jour — le pied dit « il y a N min ». S'il n'y en a pas encore,
+   « Choisir le fichier de sauvegarde », un nom neuf : c'est LE fichier.
+3. **Sur vuna.fr/app : « Choisir le fichier de sauvegarde », et désigner CE fichier.** Il
+   est lu, pas écrasé : l'écran de l'import donne ses comptes (séries, scans, lignes) —
+   les comparer à ceux de venapp.fr —, puis « Fusionner ». Il devient la sauvegarde
+   automatique de vuna.fr, et la première écriture emporte tout ce qu'il portait.
+4. **Ressaisir la clé de licence** ; rouvrir le verrou propriétaire si les données étaient
    dans l'espace personnel — le tiroir Intendance dit quel espace porte le poids.
-6. **Choisir le fichier de sauvegarde automatique sur vuna.fr**, de préférence sous un nom
-   neuf.
-7. **Alors seulement, activer la redirection.** Ne pas vider les données du site venapp.fr
-   dans le navigateur pendant les premières semaines : c'est la copie de secours qui ne
-   coûte rien.
+5. **Alors seulement, activer la redirection.** Elle rend venapp.fr injoignable, ce qui
+   règle aussi le relais décrit plus haut. Ne pas vider les données du site venapp.fr dans
+   le navigateur pendant les premières semaines : elles ne coûtent rien.
 
-**Ce qui se passait avant 260926, et qui rendait l'étape 4 dangereuse** : sur une adresse
-neuve, le geste naturel — « mon fichier de sauvegarde est là, je le choisis » — prenait le
-bouton « Choisir le fichier de sauvegarde », qui ÉCRIVAIT le stockage vide du navigateur
-dans le fichier choisi. Mesuré : cinq blocs devenus un seul. C'est désormais refusé, avec
-le geste d'import nommé ; `scripts/app/sauvegarde-jamais-ecrasee-par-rien.test.mjs` le tient.
+**Ce qui se passait avant, et qui rendait la bascule dangereuse** : sur 260922, « Choisir le
+fichier de sauvegarde » ÉCRIVAIT le stockage vide du navigateur dans le fichier choisi —
+cinq blocs devenus un seul — et la réécriture de chaque minute faisait de même sans un
+clic. 260926 refusait le cas du navigateur entièrement vide, — la première livraison de ce jour-là — mais pas celui du stockage
+local vidé avec IndexedDB gardé : les portefeuilles partaient au premier battement. Et
+l'import lisait d'un bloc : un fichier de plus de ~440 Mo ne se rechargeait pas.
 
 ## Deux chaînes de travail sur le même dépôt : d'où viennent les régressions
 

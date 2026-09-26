@@ -4,11 +4,11 @@
 // sauvegarde Véna VALIDE de 587 Mo, que `text()` refuse de lire d'un bloc.
 //
 // ————— ANGLE MORT, EN TÊTE (règle 9) —————
-// Le cas « trop long » est mesuré pour de vrai une seule fois, hors de cette garde (un
-// fichier de 560 Mo coûte ~10 s et 600 Mo de mémoire) : ici la BRANCHE est éprouvée par
-// un fichier dont `text()` jette, à la taille mesurée. Ce qu'elle ne sait pas : le seuil
-// d'un AUTRE navigateur, qui peut refuser plus tôt — le message nomme donc aussi
-// l'exception et la taille.
+// La lecture d'un GRAND fichier est mesurée pour de vrai une seule fois, hors de cette
+// garde (un fichier de 560 Mo coûte ~10 s et 600 Mo de mémoire) : ici elle est éprouvée
+// par un fichier dont `text()` JETTE à la taille mesurée et dont le flux, lui, se lit —
+// l'examen doit passer par le flux, ou il tombe. Ce qu'elle ne sait pas : la mémoire
+// d'une entrée isolée, qui reste lue d'un seul tenant (elle a été écrite ainsi).
 //
 // ————— CE QU'ELLE TIENT —————
 // Chaque cause rend SA phrase, par la porte unique des trois boutons d'import ; aucune ne
@@ -79,12 +79,14 @@ test("chaque cause d'une sauvegarde qu'on ne peut pas relire rend SA phrase", { 
       ["tronqué", complet.slice(0, Math.floor(complet.length * 0.6)), null, false, { msg: /s’arrête avant sa fin/ }],
       ["abîmé au milieu", milieu, null, false, { msg: /abîmé en son milieu/ }],
       ["vide", "", null, false, { msg: /vide \(0 octet\)/ }],
-      ["pas du JSON", "PK\u0003\u0004 zip", null, false, { msg: /commence par « PK/ }],
+      ["pas du JSON", "PK\u0003\u0004 zip", null, false, { msg: /ne commence pas par un objet JSON/ }],
       ["autre outil", JSON.stringify({ outil: "autre", donnees: {} }), null, false, { msg: /vient de « autre »/ }],
       ["sans en-tête", JSON.stringify({ donnees: {} }), null, false, { msg: /champ « outil » absent/ }],
       ["sans données", JSON.stringify({ outil: "vena" }), null, false, { msg: /champ « donnees » absent/ }],
-      ["trop long (587 Mo, mesuré)", "", 587202726, true, { msg: /trop long pour que ce navigateur le lise/ }],
-      ["refus de lecture sous le plafond", "", 20000000, true, { msg: /modifié ou déplacé/ }],
+      // `text()` refuse au-delà de 461 à 482 millions d'octets (mesuré) : le fichier de
+      // 587 Mo qui rendait « Fichier illisible. » doit désormais s'examiner — par le flux
+      ["grand (587 Mo, text() refuse)", complet, 587202726, "texte", { examen: true }],
+      ["refus de lecture du flux", "", 20000000, "flux", { msg: /modifié ou déplacé/ }],
     ];
     for (const [nom, texte, taille, jette, attendu] of CAS) {
       const r = await p.evaluate(`(async () => { const i = ${INSTANCE};
@@ -92,7 +94,8 @@ test("chaque cause d'une sauvegarde qu'on ne peut pas relire rend SA phrase", { 
         await new Promise((ok) => setTimeout(ok, 30));
         const vrai = new File([${JSON.stringify(texte)}], 'sauvegarde.json');
         const f = ${taille === null && !jette ? "vrai" : `{ name: 'sauvegarde.json', size: ${taille},
-          text: async () => { ${jette ? "throw new DOMException('refus', 'NotReadableError');" : "return ''"} } }`};
+          text: async () => { throw new DOMException('refus', 'NotReadableError'); },
+          stream: () => ${jette === "flux" ? `new ReadableStream({ pull() { throw new DOMException('refus', 'NotReadableError'); } })` : "vrai.stream()"} }`};
         await i.examinerImport(f);
         await new Promise((ok) => setTimeout(ok, 120));
         return { msg: i.state.sauvMsg || '', examen: !!i.state.dlgImport }; })()`);

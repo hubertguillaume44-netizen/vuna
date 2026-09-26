@@ -6820,13 +6820,13 @@ touche une constante que trois gardes tiennent. Non fait.
 sur d'autres surfaces :
 
 - `baremeMsg: 'Fichier illisible.'` dans l'import du relevé de courtier : un seul `catch`
-  pour toutes les causes, la forme que `lireSauvegarde` vient de fermer pour les sauvegardes.
-- `importerTout(fichier)` : plus aucun appelant, et il porte l'ancien message. **À
-  SUPPRIMER, pas à laisser dormir** — le jour où un bouton le rappelle, le défaut revient
-  sans que rien ne l'annonce. Un producteur mort n'est pas sans conséquence : c'est une
-  régression en attente d'appelant (règle 14, cartographier avant de supprimer).
-- **le trou de la garde d'écrasement, mesuré** : voir « Un bouton qui accueille quelqu'un
-  SANS ses données », sa dernière section.
+  pour toutes les causes, la forme que l'examen des sauvegardes a fermée pour elles.
+  **Toujours ouvert.**
+- `importerTout(fichier)`, la méthode : plus aucun appelant, et elle portait l'ancien
+  message. **Supprimée en 260926.2**, cartographie faite — aucune garde ne s'y accrochait ;
+  le gestionnaire de gabarit du même nom, lui, reste et passe par l'examen.
+- **le trou de la garde d'écrasement** : fermé en 260926.2 — voir « Une seule sauvegarde,
+  à un seul endroit ».
 
 ## Un fond permanent de messages est un canal de diagnostic hors service
 
@@ -7054,11 +7054,12 @@ portait. La boîte « remplacer ? » de Chrome ne protège pas celui qui croit c
 > détruit** : si elle avait ses données, elle n'aurait pas besoin de sa sauvegarde. Un
 > geste offert au moment de la perte doit être sûr pour quelqu'un qui n'a PLUS rien.
 
-**La garde vit à la frontière d'écriture, pas sur le bouton** : la réécriture de chaque
-minute suit le même chemin, et un navigateur vidé écrasait aussi au premier battement.
-Elle décide sur ce qui a été ÉCRIT, juste avant `close()` — le seul geste irréversible :
-une écriture qui ne porte aucun bloc lourd (série ou scan) ne remplace jamais un fichier
-qui en porte. `abort()` laisse l'original intact.
+**La garde de 260926 vivait à la frontière d'écriture, pas sur le bouton** : la réécriture
+de chaque minute suit le même chemin, et un navigateur vidé écrasait aussi au premier
+battement. Elle décidait sur ce qui avait été ÉCRIT, juste avant `close()` : une écriture
+sans bloc lourd (série ou scan) ne remplaçait pas un fichier qui en portait. **Elle est
+partie en 260926.2**, remplacée par une règle sans seuil — voir « Une seule sauvegarde, à
+un seul endroit » plus bas.
 
 **SA PREMIÈRE FORME COMPARAIT DES TAILLES, et le banc l'a fait passer au vert sur
 l'écrasement même qu'elle visait.** La session vide de l'essai pèse 3 025 octets ; la
@@ -7081,9 +7082,20 @@ sur Chromium : 461 373 606 octets se lisent, 482 345 126 non — et une sauvegar
 > promet qu'« un fichier que cette application a écrit ne doit jamais être refusé par
 > elle » ; l'asymétrie le violait pour les seuls utilisateurs qui ont le plus à perdre.
 
-**Ce qui est livré ne ferme PAS ce trou, et c'est écrit ici** : le message nomme la
-taille et dit de garder le fichier intact. Le lecteur au fil — le pendant exact de
-`ecrireExportAu` — est la réparation, et elle reste à faire.
+**260926 ne fermait pas ce trou** : le message nommait la taille et disait de garder le
+fichier intact. **260926.2 le ferme** : `lireSauvegardeAuFil`, le pendant exact de
+`ecrireExportAu`, est le seul lecteur de sauvegarde — examen, import, reprise d'un scan
+évincé, confrontation avant écriture. MESURÉ au rendu, sur le fichier livré : une
+sauvegarde valide de **570 Mo** s'examine en 4 s et se recharge en 16 s — 120 séries et le
+portefeuille —, la mémoire du script restant sous 160 Mo.
+
+**Et le refus n'était pas celui qu'on croyait.** Sur ce même fichier, lu depuis le disque,
+`text()` n'a pas levé : il a rendu une chaîne **VIDE**, longueur 0. Le seuil mesuré plus
+haut (461 à 482 millions d'octets) l'avait été par une exception ; ici le même navigateur
+se tait. L'ancien chemin aurait donc dit « ne commence pas par un objet JSON » d'une
+sauvegarde valide — une cause fausse, nommée avec assurance. *Deux mesures du même plafond,
+deux comportements : c'est la raison de ne plus dépendre de lui, et non de mieux le
+deviner.*
 
 ### « Fichier illisible » recouvrait cinq causes ; le rapport en nommait quatre, dont deux fausses
 
@@ -7135,3 +7147,55 @@ d'écrire : on l'enregistre au moment du geste. Trois mesures avant de choisir :
 - **le marqueur vit dans les DEUX stockages**, sinon il se perd quand l'un est vidé, et le
   trou revient sous une autre forme ;
 - **le faux refus** : une famille vidée depuis un autre navigateur, puis importée ici.
+
+### Une seule sauvegarde, à un seul endroit — trois garanties, et la copie n'en est plus une
+
+**STATUT · CAUSE ÉTABLIE — exigence RAPPORTÉE (l'utilisateur refuse de multiplier les
+copies ; « copiez-le sous un autre nom » était écrit dans PASSATION.md comme LA
+protection), trous MESURÉS DANS LE DÉPÔT (ci-dessus), correctif et gardes MESURÉS DANS LE
+DÉPÔT, au rendu, sur le fichier livré.**
+
+> **Une consigne qui demande à l'utilisateur de protéger son fichier CONTRE le produit est
+> l'aveu que le produit ne le protège pas.** Retirez la personne : la copie n'existe plus,
+> et le fichier est de nouveau exposé. C'était une vigilance écrite comme une protection.
+
+| la garantie | le mécanisme | ce qui la tient |
+|---|---|---|
+| jamais remplacé par un état **moins complet** sans un geste | avant la première écriture d'une séance, le fichier est relu PAR CLÉ ; ce qu'il porte et que le navigateur n'a plus — sans trace de suppression — est remis, puis écrit ; une clé qui ne peut pas être remise : rien n'est écrit | `sauvegarde-jamais-ecrasee-par-rien`, cas E, F, G |
+| se relit **quelle que soit sa taille** | un seul lecteur, au fil | `sauvegarde-lue-par-morceaux`, `sauvegarde-illisible-dit-pourquoi` |
+| « Choisir » sur un fichier existant le **charge** | l'écran de l'import, et l'adoption APRÈS « Fusionner » ou « Remplacer » | `sauvegarde-jamais-ecrasee-par-rien`, cas A à D |
+
+**L'hypothèse du marqueur a été éprouvée, et la forme retenue n'est pas un marqueur de
+FAMILLE : c'est une trace par CLÉ, posée aux PORTES.** Les trois mesures demandées :
+
+- **combien de gestes suppriment** : la question ne se pose plus. Compté —
+  `grep -o "localStorage\.removeItem(" Vuna.dc.html | wc -l` rend 16,
+  `grep -oE "grosSet\([^;]*, null\)" Vuna.dc.html | wc -l` rend 8 — et aucun de ces
+  vingt-quatre sites n'a à penser à la trace : elle est posée dans la façade du stockage
+  et dans `grosSet`, les deux seules portes. C'est la figure de `deposes` : un marqueur par
+  geste aurait été vingt-quatre occasions d'en oublier un ;
+- **dans les deux stockages** : la trace vit dans le stockage local ET dans IndexedDB, et
+  on lit leur union. Éprouvé par mutation : sans la copie d'IndexedDB, une série supprimée
+  juste avant que le stockage local soit vidé REVIENT — la garde tombe en le disant ;
+- **le faux refus** : il n'y a plus de refus sur ce chemin. Ce qui manque est remis ; seule
+  une remise impossible arrête l'écriture. Le cas proposé — une famille vidée depuis un
+  autre navigateur — est celui de DEUX navigateurs sur UN fichier : ils s'y relaient, et
+  sur une clé commune c'est le dernier qui écrit qui gagne. L'exigence « un seul endroit »
+  est ce qui le borne, et PASSATION.md le dit à l'étape de la bascule.
+
+**UNE CLÉ PRÉSENTE N'EST PAS UNE CLÉ GARDÉE.** La confrontation demandait d'abord « la clé
+existe-t-elle ici ? ». Un portefeuille recréé sur l'écran vidé, avant la première écriture,
+répond oui — et le fichier perdait les siens. La réponse vient d'un relevé pris AVANT que
+l'application écrive un octet : `CLES_A_L_OUVERTURE`, des noms, jamais des valeurs. Une
+clé absente à l'ouverture et portée par le fichier a été perdue ; c'est le fichier qui fait
+foi pour elle, et le message dit qu'une valeur d'ici a été remplacée. **Cette branche a
+d'abord été verte sous mutation** : le banc ne recréait aucune clé, donc elle n'était pas
+exercée — la mutation inerte a dit « non mesuré », pas « robuste ». Le banc recrée
+désormais un portefeuille, et la même mutation tombe en citant le portefeuille recréé.
+
+**ANGLE MORT, en tête de `confronterFichier` et répété ici** : la comparaison est par CLÉ —
+une valeur appauvrie des deux côtés (une ligne retirée d'un portefeuille) est une
+modification, et rien ne la distingue d'une perte ; elle a lieu une fois par fichier et
+par séance, avant la première écriture ; et un index de séries restauré depuis le fichier
+peut nommer une série dont le bloc a été supprimé juste avant la perte du stockage local —
+le bloc ne revient pas (la trace le retient), l'index le nomme encore.

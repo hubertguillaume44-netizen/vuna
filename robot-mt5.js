@@ -467,7 +467,7 @@ input ulong  InpMagic           = ${nb(ctx.magic, 20260901)};
 // quelle build l'avait émis. Le stamp d'export ne répond pas à cette question : il dit
 // QUAND on a exporté, pas DE QUOI. La marque est écrite ici dans la forme exacte que
 // « npm run app:version » cherche, donc ce fichier est daté comme les deux autres.
-#define VUNA_VERSION "260926"
+#define VUNA_VERSION "260926.2"
 //--- Configuration mesurée (ne pas modifier : le backtest ne serait plus valable)
 #define STOP_PCT        ${sl}
 #define OBJECTIF_R      ${rr}

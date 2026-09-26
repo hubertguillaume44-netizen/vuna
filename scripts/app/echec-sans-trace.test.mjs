@@ -112,6 +112,10 @@ test("après deux échecs la sauvegarde automatique s'arrête, avorte, et le dit
         name: "vuna-sauvegarde.json",
         queryPermission: async () => "granted",
         requestPermission: async () => "granted",
+        // un fichier NEUF : la confrontation qui précède la première écriture n'a rien à
+        // relire. Sans `getFile`, elle refuserait d'écrire — un refus, pas un échec — et
+        // cette garde compterait zéro tentative pour une raison qui n'est pas la sienne.
+        getFile: async () => new File([], "vuna-sauvegarde.json"),
         createWritable: async () => {
           compte.ouverts += 1;
           return {

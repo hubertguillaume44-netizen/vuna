@@ -738,6 +738,9 @@
             <span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase" class="text-muted">Ce fichier contient</span>
             <strong style="font-size:13px;line-height:1.35">{{ impNom }}</strong>
             <span style="font-size:11px;line-height:1.55" class="text-muted">{{ impQuoi }}</span>
+            <sc-if value="{{ aImpAdopte }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:11px;line-height:1.55;color:var(--color-accent-900)">{{ impAdopte }}</span>
+            </sc-if>
             <span style="font-size:11px;line-height:1.55;color:var(--color-accent-700)">{{ impIci }} Que faut-il en faire ?</span>
             <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
               <button class="btn btn-primary" type="button" style="min-height:1.9rem;font-size:11px;padding-inline:12px" onClick="{{ fusionnerImport }}" title="{{ impFusionAide }}">Fusionner</button>
@@ -6423,6 +6426,18 @@ const PREFIXE_ANCIEN = 'simula.';
 // voir le navigateur tel qu'il est — sinon elle lirait sa propre traduction et croirait
 // avoir déjà déplacé ce qu'elle n'a pas touché.
 const STOCK_BRUT = globalThis.localStorage;
+// ————— CE QUE LE STOCKAGE PORTAIT À L'OUVERTURE, avant que l'application écrive un octet —————
+//
+// La confrontation avec le fichier de sauvegarde (`confronterFichier`) doit distinguer une
+// clé que l'utilisateur a ÉCRITE d'une clé que l'application a RECRÉÉE avec sa valeur par
+// défaut après que le navigateur a vidé son stockage. Les deux sont présentes au moment de
+// comparer ; seule la seconde était absente ICI. Une liste de noms, jamais de valeurs : le
+// relevé ne coûte rien, et la migration qui suit ne l'a pas encore touché.
+const CLES_A_L_OUVERTURE = (() => {
+  const s = new Set();
+  try { for (let i = 0; i < STOCK_BRUT.length; i++) { const k = STOCK_BRUT.key(i); if (k) s.add(k); } } catch (e) {}
+  return s;
+})();
 const CLE_MIGRATION = PREFIXE + 'migration.nom.v1';
 // Les familles, dans l'ordre de valeur. Ce qui n'est listé nulle part passe en dernier :
 // une clé oubliée ici est migrée quand même, jamais perdue.
@@ -6563,6 +6578,128 @@ function texteDeSauvegarde(debut) {
   return OUTILS_LUS.some(function (o) { return t.indexOf('"outil":"' + o + '"') >= 0; });
 }
 
+// ————— LIRE UNE SAUVEGARDE PAR MORCEAUX, COMME ELLE S'ÉCRIT —————
+//
+// `ecrireExportAu` écrit au fil : son pic est le plus gros BLOC, jamais le fichier. La
+// lecture faisait `await fichier.text()` : elle construisait le fichier entier en une
+// chaîne, et Chromium refuse au-delà d'un seuil mesuré entre 461 et 482 millions
+// d'octets — le produit refusait donc les fichiers qu'il avait lui-même écrits, et
+// précisément chez ceux qui avaient le plus à perdre. Ce lecteur est le pendant exact de
+// l'écriture : il rend les champs d'en-tête et les entrées de `donnees` UNE À UNE, chacune
+// en texte JSON, et ne tient jamais plus qu'une entrée. Une entrée a été écrite d'un seul
+// tenant par l'export, donc elle se relit d'un seul tenant.
+//
+// Rend { champ, valeur } pour l'en-tête (et pour `donnees` quand ce n'est pas un objet —
+// le format chiffré y met une chaîne), { cle, valeur } pour chaque entrée. `valeurs:
+// false` ne garde que les clés ; `garder(cle, entete)` choisit, clé par clé, les valeurs
+// à garder — une valeur non gardée rend `null` et n'est jamais assemblée en mémoire. Échoue par une erreur dont `cause` dit laquelle :
+// « pasObjet » (ne commence pas par un objet), « syntaxe » (abîmé), « tronque » (s'arrête
+// avant sa fin). Une lecture refusée par le navigateur remonte telle quelle.
+async function* lireSauvegardeAuFil(blob, options) {
+  const toutes = !(options && options.valeurs === false);
+  const choix = options && typeof options.garder === 'function' ? options.garder : null;
+  let garder = toutes;
+  const lec = blob.stream().getReader();
+  const dec = new TextDecoder();
+  const erreur = (cause) => { const e = new Error('sauvegarde : ' + cause); e.cause = cause; return e; };
+  let phase = 'avant', niveau = 1, cle = '', k0 = 0, v0 = 0, prof = 0, dansCh = false, esc = false;
+  let cleParts = [], valParts = [];
+  const blanc = (c) => c === 32 || c === 10 || c === 13 || c === 9;
+  try {
+    for (;;) {
+      const { done, value } = await lec.read();
+      const t = done ? dec.decode() : dec.decode(value, { stream: true });
+      const n = t.length;
+      let i = 0;
+      k0 = 0; v0 = 0;
+      while (i < n) {
+        const c = t.charCodeAt(i);
+        if (phase === 'val') {
+          if (dansCh) {
+            if (esc) esc = false; else if (c === 92) esc = true; else if (c === 34) dansCh = false;
+            i++; continue;
+          }
+          if (c === 34) { dansCh = true; i++; continue; }
+          if (c === 123 || c === 91) { prof++; i++; continue; }
+          if (prof > 0) { if (c === 125 || c === 93) prof--; i++; continue; }
+          if (c === 44 || c === 125) {                      // fin de la valeur, au niveau du conteneur
+            if (garder) valParts.push(t.slice(v0, i));
+            const txt = garder ? valParts.join('').trim() : null;
+            valParts = [];
+            phase = 'apres';
+            yield niveau === 2 ? { cle, valeur: txt } : { champ: cle, valeur: txt };
+            continue;                     // la virgule ou l'accolade est lue par « apres »
+          }
+          if (c === 93) throw erreur('syntaxe');
+          i++; continue;
+        }
+        if (phase === 'dansCle') {
+          if (esc) esc = false;
+          else if (c === 92) esc = true;
+          else if (c === 34) {
+            cleParts.push(t.slice(k0, i));
+            try { cle = JSON.parse('"' + cleParts.join('') + '"'); } catch (e) { throw erreur('syntaxe'); }
+            cleParts = [];
+            phase = 'deux';
+          }
+          i++; continue;
+        }
+        if (blanc(c) || (phase === 'avant' && c === 0xFEFF)) { i++; continue; }
+        if (phase === 'avant') {
+          if (c !== 123) throw erreur('pasObjet');
+          phase = 'cle'; i++; continue;
+        }
+        if (phase === 'cle' || phase === 'apres') {
+          if (c === 125) {                                   // fin d'un objet
+            if (niveau === 2) { niveau = 1; phase = 'apres'; } else phase = 'fin';
+            i++; continue;
+          }
+          if (phase === 'apres') {
+            if (c !== 44) throw erreur('syntaxe');
+            phase = 'cle'; i++; continue;
+          }
+          if (c !== 34) throw erreur('syntaxe');
+          phase = 'dansCle'; esc = false; k0 = i + 1; i++; continue;
+        }
+        if (phase === 'deux') {
+          if (c !== 58) throw erreur('syntaxe');
+          phase = 'debut'; i++; continue;
+        }
+        if (phase === 'debut') {
+          if (niveau === 1 && cle === 'donnees' && c === 123) { niveau = 2; phase = 'cle'; i++; continue; }
+          phase = 'val'; v0 = i; prof = 0; dansCh = false; esc = false;
+          garder = choix ? !!choix(cle, niveau === 1) : toutes;
+          continue;                                         // ce caractère ouvre la valeur
+        }
+        throw erreur('syntaxe');                             // du texte après la fin
+      }
+      if (phase === 'val' && garder) valParts.push(t.slice(v0));
+      if (phase === 'dansCle') cleParts.push(t.slice(k0));
+      if (done) break;
+    }
+  } finally { try { lec.releaseLock(); } catch (e) {} }
+  if (phase === 'avant') throw erreur('vide');
+  if (phase !== 'fin') throw erreur('tronque');
+}
+
+// ————— LES SUPPRESSIONS LAISSENT UNE TRACE —————
+//
+// Une sauvegarde ne doit jamais être remplacée par un état moins complet sans un geste :
+// pour le savoir à l'écriture, il faut distinguer ce qu'on a SUPPRIMÉ de ce qu'on a PERDU.
+// Toute suppression du stockage local passe par la façade ci-dessous, toute suppression
+// IndexedDB par `grosSet(clé, null)` : ce sont les deux seules portes, et la trace y est
+// posée. Une suppression survenue avant que l'application existe n'est pas perdue : elle
+// attend le premier abonné, comme le signal de quota.
+let noterEffacementFn = null;
+const effacementsEnAttente = [];
+function poserNoteEffacement(fn) {
+  noterEffacementFn = fn;
+  while (fn && effacementsEnAttente.length) { try { fn(effacementsEnAttente.shift()); } catch (e) {} }
+}
+function signalerEffacement(k) {
+  if (noterEffacementFn) { try { noterEffacementFn(k); } catch (e) {} } else effacementsEnAttente.push(k);
+}
+
 // ————— LE REPLI DE LECTURE —————
 //
 // Le pendant de `cleVersNeuf`, à la lecture : « vena.X » → « simula.X ». Il rend
@@ -6642,7 +6779,7 @@ const localStorage = {
   // disparaître, sur un simple geste d'entretien, le seul exemplaire d'une donnée que
   // la migration n'a pas pu déplacer. Conséquence assumée : tant que l'ancienne est là,
   // une donnée supprimée sous son nom neuf redevient lisible par le repli.
-  removeItem(k) { STOCK_BRUT.removeItem(k); },
+  removeItem(k) { STOCK_BRUT.removeItem(k); signalerEffacement(k); },
   clear() { STOCK_BRUT.clear(); },
 };
 
@@ -13239,6 +13376,9 @@ GROUPES = {
     // le signal de quota trouve enfin un lecteur. Un refus survenu AVANT ce moment —
     // pendant la migration, par exemple — est remis ici par `poserSignalQuota`.
     poserSignalQuota((q) => this.setState({ manquePlace: q }));
+    // chaque suppression du stockage local laisse sa trace (voir `noterEffacement`) ;
+    // celles d'avant cette ligne attendaient dans la file de la façade
+    poserNoteEffacement((k) => this.noterEffacement(k));
     // sans await : le verdict peut arriver quand il veut, rien n'en dépend
     this.verifierVersionServie();
     window.addEventListener('beforeunload', this.quitter);
@@ -17850,7 +17990,7 @@ GROUPES = {
   // Version de l'APPLICATION, distincte de la règle du moteur : un rapport d'avis a
   // besoin des deux — « e4 » dit comment les trades sont calculés, la date dit quelle
   // version de la page l'utilisateur avait sous les yeux.
-  VERSION_APP = '260926';
+  VERSION_APP = '260926.2';
   // ————— CE QUI DATE UNE MESURE VOYAGE AVEC ELLE, ET D'UN SEUL ENDROIT —————
   //
   // Deux estampilles, deux questions. `_mv` dit sous quelle RÈGLE les trades ont été
@@ -18301,6 +18441,9 @@ GROUPES = {
   }
   // les scans complets vivent ici : localStorage est mille fois trop petit pour eux
   async grosSet(cle, valeur) {
+    // la seconde porte des suppressions : IndexedDB. La trace est posée AVANT d'effacer —
+    // une suppression interrompue laisse une trace de trop, jamais une de moins.
+    if (valeur === null || valeur === undefined) this.noterEffacement('gros:' + cle);
     try {
       const db = await this.idb();
       return await new Promise((ok) => {
@@ -20492,22 +20635,209 @@ GROUPES = {
     }
     return { dump, bilan: { nS, nC } };
   }
-  dumpComplet() {
-    // la clé d'API n'est jamais exportée : elle est nominative et l'export circule
-    const bases = [this.CLE, this.CLE_PF, this.CLE_FAV, this.CLE_SESSION, this.CLE_SCAN,
+  // ————— CE QU'UN EXPORT EMPORTE, DIT À UN SEUL ENDROIT —————
+  // La clé d'API n'est jamais exportée : elle est nominative et l'export circule. La liste
+  // est lue par l'export ET par la confrontation du fichier automatique : deux listes
+  // diverger ferait comparer au fichier des clés que l'export n'écrit pas, ou l'inverse.
+  basesExport() {
+    return [this.CLE, this.CLE_PF, this.CLE_FAV, this.CLE_SESSION, this.CLE_SCAN,
       this.CLE_REGIMES, this.CLE_BAREME, this.CLE_SERIES];
+  }
+  // Une clé, sous la forme où l'export l'écrit (`gros:` devant un bloc d'IndexedDB), que
+  // l'export emporte. Les blocs lourds sont les séries (`base<suffixe>|symbole`) et les scans.
+  estCleExportee(k) {
+    k = String(k || '');
+    if (k.startsWith('gros:')) {
+      const g = k.slice(5);
+      return (g.startsWith(this.CLE_SERIES) && g.includes('|'))
+        || g === this.CLE_SCAN || g.startsWith(this.CLE_SCAN + '.');
+    }
+    return this.basesExport().some((b) => k === b || k.startsWith(b + '.'));
+  }
+  dumpComplet() {
     const dump = {};
     // les clés portent l'espace ET, pour les données cloisonnées par compte, la clé du
     // compte : on balaie donc tout le stockage plutôt qu'une liste de suffixes figée
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (!k || !bases.some((b) => k === b || k.startsWith(b + '.'))) continue;
+        if (!k || k.startsWith('gros:') || !this.estCleExportee(k)) continue;
         const v = localStorage.getItem(k);
         if (v !== null) dump[k] = v;
       }
     } catch (e) {}
     return dump;
+  }
+  // ————— UNE SUPPRESSION VOULUE EST UN FAIT, ET ELLE LAISSE UNE TRACE —————
+  //
+  // Le fichier de sauvegarde ne doit jamais être remplacé par un état MOINS complet sans un
+  // geste. Pour le savoir à l'écriture, il faut séparer deux absences qui se ressemblent :
+  // une clé que l'utilisateur a supprimée — la sauvegarde doit la perdre — et une clé que
+  // le navigateur a perdue — la sauvegarde doit la rendre. Rien, dans le stockage, ne les
+  // distingue après coup ; la trace les distingue au moment où la première a lieu.
+  //
+  // Elle vit dans LES DEUX stockages, parce que le trou mesuré est justement qu'un seul se
+  // vide : le stockage local effacé, IndexedDB gardé — ou l'inverse. Une trace qui ne vivrait
+  // que dans le premier disparaîtrait avec ce qu'elle doit expliquer. Elle s'efface après
+  // une écriture réussie du fichier : il ne porte plus la clé, il n'y a plus rien à décider.
+  //
+  // Elle passe par `STOCK_BRUT`, pas par la façade : écrire la trace d'une suppression par
+  // la porte qui trace les suppressions, c'est une boucle ; et un refus de quota sur ce
+  // registre n'est pas une perte de données de l'utilisateur, il ne doit pas en avoir l'air.
+  CLE_EFFACEES = 'vena.effacees.v1';
+  PLAFOND_EFFACEES = 5000;
+  effaceesIci() {
+    if (!this._effacees) {
+      this._effacees = new Set();
+      try { for (const k of JSON.parse(STOCK_BRUT.getItem(this.CLE_EFFACEES) || '[]')) this._effacees.add(k); } catch (e) {}
+    }
+    return this._effacees;
+  }
+  noterEffacement(k) {
+    k = String(k || '');
+    if (!this.estCleExportee(k)) return;
+    const e = this.effaceesIci();
+    e.delete(k); e.add(k);                       // la plus récente en dernier
+    while (e.size > this.PLAFOND_EFFACEES) e.delete(e.values().next().value);
+    this.persisterEffacees();
+  }
+  persisterEffacees() {
+    const l = [...this.effaceesIci()];
+    try {
+      if (l.length) STOCK_BRUT.setItem(this.CLE_EFFACEES, JSON.stringify(l));
+      else STOCK_BRUT.removeItem(this.CLE_EFFACEES);
+    } catch (e) {}
+    try { this.idbSet(l, 'effacees').catch(() => {}); } catch (e) {}
+  }
+  // l'UNION des deux copies : celle qui a survécu suffit
+  async lireEffacees() {
+    const s = new Set(this.effaceesIci());
+    try { const l = await this.idbGet('effacees'); if (Array.isArray(l)) for (const k of l) s.add(k); } catch (e) {}
+    return s;
+  }
+  oublierEffacees(ecrites) {
+    const e = this.effaceesIci();
+    for (const k of ecrites) e.delete(k);
+    this.persisterEffacees();
+  }
+  // Une clé présente MAINTENANT mais absente à l'ouverture de la page, alors que le fichier
+  // la porte : le fichier ne peut la porter que parce que le navigateur l'avait à la
+  // dernière écriture. Elle a donc été perdue, puis recréée — par une valeur par défaut, le
+  // plus souvent. C'est le fichier qui fait foi pour elle.
+  //
+  // La SESSION est exclue : c'est l'état de l'écran, pas un travail, et la remettre au
+  // milieu d'une séance ferait sauter la vue de quelqu'un qui travaille.
+  perdueALOuverture(k) {
+    if (k.startsWith('gros:')) return false;
+    if (k === this.CLE_SESSION || k.startsWith(this.CLE_SESSION + '.')) return false;
+    return !CLES_A_L_OUVERTURE.has(k);
+  }
+  // ————— AVANT LA PREMIÈRE ÉCRITURE, LE FICHIER EST RELU —————
+  //
+  // ANGLE MORT, en tête (règle 9) : la comparaison se fait PAR CLÉ. Une clé présente des
+  // deux côtés est prise dans le navigateur, qui porte l'écriture la plus récente — un
+  // portefeuille dont on a retiré une ligne est une modification, pas une perte, et rien
+  // ne distingue les deux dans une valeur. Et elle a lieu une fois par fichier et par
+  // séance, avant la première écriture : une perte survenue APRÈS, page ouverte, n'est pas
+  // vue — les navigateurs ne vident pas le stockage d'une page ouverte, mais rien ici ne
+  // le prouve.
+  //
+  // Rend { ok:true, msg? } — `msg` quand des blocs ont été remis — ou { ok:false, msg } :
+  // rien ne doit être écrit, et la phrase dit pourquoi.
+  async confronterFichier(h) {
+    const nom = (h && h.name) || 'le fichier';
+    const rien = 'Rien n’a été écrit dans ' + nom + ' : ';
+    let f;
+    try { f = await h.getFile(); } catch (e) {
+      return { ok: false, msg: rien + 'le navigateur refuse de le relire (' + ((e && e.name) || 'erreur')
+        + '), donc Vuna ne peut pas vérifier ce qu’il porte avant de le remplacer. Choisissez à nouveau le fichier.' };
+    }
+    if (!f.size) return { ok: true };
+    const presentes = await this.clesPresentes();
+    const effacees = await this.lireEffacees();
+    const aRemettre = new Set(), remplacees = new Set();
+    const entete = {};
+    let vu = false, chiffre = false;
+    try {
+      for await (const x of lireSauvegardeAuFil(f, { garder: (k, ent) => ent && k !== 'donnees' })) {
+        if (x.champ !== undefined) {
+          if (this.estChampChiffre(x.champ)) chiffre = true;
+          if (x.valeur !== null) { try { entete[x.champ] = JSON.parse(x.valeur); } catch (e) {} }
+          continue;
+        }
+        if (!vu) {
+          vu = true;
+          const refus = this.refusEnveloppe(entete, true);
+          if (refus) return { ok: false, msg: rien + refus + ' Vuna ne remplace pas un fichier qui n’est pas le sien : choisissez un autre nom de fichier.' };
+        }
+        const k = this.cleVersNeuf(x.cle);
+        if (!this.estCleExportee(k) || effacees.has(k)) continue;
+        if (!presentes.has(k)) aRemettre.add(k);
+        else if (this.perdueALOuverture(k)) { aRemettre.add(k); remplacees.add(k); }
+      }
+    } catch (e) {
+      return { ok: false, msg: rien + this.causeLecture(e) + ' (' + this.taille(f.size) + '). Vuna ne remplace '
+        + 'pas un fichier qu’il ne peut pas relire en entier : il est laissé intact. Pour la sauvegarde '
+        + 'automatique, choisissez un autre nom de fichier.' };
+    }
+    if (chiffre) {
+      return { ok: false, msg: rien + 'c’est une sauvegarde CHIFFRÉE, dont Vuna ne peut pas vérifier le '
+        + 'contenu sans sa phrase — il ne la remplace donc pas. Pour la recharger : « Importer mes '
+        + 'données ». Pour la sauvegarde automatique, choisissez un autre nom de fichier.' };
+    }
+    // aucune entrée : un fichier Vuna à « donnees » vide n'a rien à perdre ; un fichier
+    // étranger, si — c'est celui de quelqu'un d'autre
+    const refusVide = vu ? null : this.refusEnveloppe(entete, true);
+    if (refusVide) {
+      return { ok: false, msg: rien + refusVide
+        + ' Vuna ne remplace pas un fichier qui n’est pas le sien : choisissez un autre nom de fichier.' };
+    }
+    if (!aRemettre.size) return { ok: true };
+    // ————— CE QUE LE FICHIER PORTE ET QUE LE NAVIGATEUR N'A PLUS : REMIS, PUIS ÉCRIT —————
+    // La fusion va dans le sens du navigateur : le fichier lui REND ce qu'il a perdu, et
+    // l'écriture qui suit emporte donc tout ce que le fichier portait. Si une seule clé ne
+    // peut pas être remise, on n'écrit PAS : l'écriture la retirerait du seul endroit où elle
+    // vit encore.
+    const r = await this.ecrireDepuisSauvegarde(f, { seulement: aRemettre });
+    if (r.erreur || r.echecs.length) {
+      return { ok: false, msg: rien + 'il porte ' + aRemettre.size + ' blocs que ce navigateur n’a plus, et '
+        + (r.echecs.length || (aRemettre.size - r.n)) + ' n’ont pas pu y être remis'
+        + (r.erreur ? ' (' + r.erreur + ')' : ' (stockage du navigateur plein ?)')
+        + '. L’écrire les lui aurait retirés : il est laissé intact.' };
+    }
+    const { etat } = await this.rechargerDepuisStockage();
+    this.setState(etat, () => this.lancerTest());
+    // une valeur écrite ICI depuis l'ouverture a été remplacée par celle du fichier : c'est
+    // un changement dans le navigateur, et il se dit — jamais « remis » tout court
+    return { ok: true, msg: 'Le fichier ' + nom + ' portait ce que ce navigateur n’avait plus — '
+      + this.decrireCles(aRemettre) + ' : c’est remis ici, puis écrit. Rien n’en a été retiré.'
+      + (remplacees.size ? ' Attention : ' + this.decrireCles(remplacees) + ' avai' + (remplacees.size > 1 ? 'en' : '')
+        + 't été recréé' + (remplacees.size > 1 ? 's' : '') + ' ici depuis l’ouverture de la page, après la perte : '
+        + 'la version du fichier l’a remplacé' + (remplacees.size > 1 ? 's' : '') + '.' : '') };
+  }
+  // ce que des clés portent, en mots : les catégories, pas les noms de clés
+  decrireCles(cles) {
+    let series = 0, scans = 0, pfs = 0, autres = 0;
+    for (const k of cles) {
+      if (k.startsWith('gros:' + this.CLE_SERIES)) series++;
+      else if (k.startsWith('gros:' + this.CLE_SCAN)) scans++;
+      else if (k.startsWith(this.CLE_PF)) pfs++;
+      else autres++;
+    }
+    const nb = (n, un, pl) => n + ' ' + (n > 1 ? pl : un);
+    return [series && nb(series, 'série de bougies', 'séries de bougies'), scans && nb(scans, 'scan', 'scans'),
+      pfs && 'les portefeuilles', autres && nb(autres, 'autre bloc', 'autres blocs')].filter(Boolean).join(', ');
+  }
+  // Un fichier devient la sauvegarde automatique ICI, et nulle part ailleurs : après un geste
+  // qui a rendu le navigateur au moins aussi complet que lui — un fichier neuf, ou un import.
+  async adopterFichierAuto(h) {
+    try { await this.idbSet(h); } catch (e) {}
+    this.handleAuto = h;
+    this._confronte = h;
+    this._refusConfronte = null;
+    // un fichier fraîchement choisi n'est plus « à rechoisir » : le bouton
+    // redevient « Réautoriser » si une attente revient un jour
+    this.setState({ autoARechoisir: false, autoNom: h.name });
   }
   // ————— LE FILET, PROPOSÉ AU BON MOMENT —————
   //
@@ -20555,11 +20885,25 @@ GROUPES = {
         suggestedName: 'vuna-sauvegarde.json',
         types: [{ description: 'Sauvegarde Vuna', accept: { 'application/json': ['.json'] } }],
       });
-      await this.idbSet(h);
-      this.handleAuto = h;
-      // un fichier fraîchement choisi n'est plus « à rechoisir » : le bouton
-      // redevient « Réautoriser » si une attente revient un jour
-      this.setState({ autoARechoisir: false });
+      // ————— UN FICHIER EXISTANT SE CHARGE, IL NE S'ÉCRASE PAS —————
+      //
+      // Le sélecteur d'enregistrement accepte un fichier qui existe (le navigateur demande
+      // seulement « remplacer ? ») et ne le vide pas : rien n'est écrit avant
+      // `createWritable`. Choisir sa sauvegarde est donc le geste de quelqu'un qui arrive
+      // AVEC ses données — sur une autre adresse, un autre navigateur, un stockage vidé —,
+      // et ce geste doit les CHARGER. Il passe par l'écran de l'import : le fichier dit ce
+      // qu'il porte, l'espace dit ce qu'il porte, et c'est « Fusionner » ou « Remplacer »
+      // qui en fait la sauvegarde automatique. « Annuler » ne touche à rien.
+      //
+      // Un fichier vide ou neuf n'a rien à charger : il est adopté tout de suite.
+      let f = null;
+      try { f = await h.getFile(); } catch (e) {
+        this.setState({ autoMsg: 'Rien n’a été écrit dans ' + (h.name || 'ce fichier') + ' : le navigateur '
+          + 'refuse de le relire (' + ((e && e.name) || 'erreur') + '). Choisissez-le à nouveau, ou un autre nom.' });
+        return;
+      }
+      if (f.size) { await this.examinerImport(f, h); return; }
+      await this.adopterFichierAuto(h);
       // sauverAuto pose lui-même autoMsg : null en cas de succès, et un message en
       // cas de refus — l'effacer ici essuyait le refus à l'instant où il venait
       // d'être dit, et l'écran ne changeait pas après le choix du fichier
@@ -20742,7 +21086,9 @@ GROUPES = {
     // sauvegarde dit déjà l'état, et le message revenait à chaque ouverture
     if (msg) this.setState({ autoMsg: msg });
   }
-  // relit le fichier de sauvegarde automatique et remet tout en place, sans clic
+  // relit le fichier de sauvegarde automatique et remet en place ce qui MANQUE, sans clic.
+  // Au fil, comme l'import — et en FUSION : il écrivait autrefois TOUT le fichier par-dessus
+  // le navigateur, clés plus récentes comprises, pour ne remettre qu'un scan évincé.
   async repriseDepuisFichier() {
     let h = this.handleAuto;
     if (!h) { try { h = await this.idbGet(); } catch (e) {} }
@@ -20751,19 +21097,12 @@ GROUPES = {
       const p = await h.queryPermission({ mode: 'read' });
       if (p !== 'granted') return null;
       const f = await h.getFile();
-      const b = JSON.parse(await f.text());
-      if (!b || OUTILS_LUS.indexOf(b.outil) < 0 || !b.donnees) return null;
-      for (const [k, v] of Object.entries(b.donnees)) {
-        if (k.startsWith('gros:')) { try { await this.grosSet(k.slice(5), typeof v === 'string' ? JSON.parse(v) : v); } catch (e) {} continue; }
-        try { localStorage.setItem(k, v); } catch (e) {}
-      }
-      const scanSauve = await this.lireScanComplet();
-      // import volontaire : les contrôles de l'espace d'arrivée, pas ceux d'avant
-      await this.chargerHasardFaits();
-      await this.chargerHasardCor();
-      if (scanSauve) this.appliquerScan(this.reprendreScan(scanSauve));
-      const pf = this.lirePf();
-      if (pf) this.setState({ pfs: pf.pfs, favoris: pf.favoris, valides: pf.valides || [] });
+      const ex = await this.examinerSauvegarde(f);
+      if (!ex.ok || ex.chiffre) return null;
+      const r = await this.ecrireDepuisSauvegarde(f, { mode: 'fusion' });
+      if (!r.n) return null;
+      const { etat } = await this.rechargerDepuisStockage();
+      this.setState(etat);
       return h.name;
     } catch (e) { return null; }
   }
@@ -20978,49 +21317,49 @@ GROUPES = {
       // message d'échec dit ce qui s'est réellement passé. Il gagne en précision
       // ce qu'il perd en anticipation, et il n'annonce plus un manque que
       // personne n'a mesuré.
-      // ————— UNE ÉCRITURE QUI NE PORTE RIEN NE REMPLACE JAMAIS UN FICHIER QUI PORTE QUELQUE CHOSE —————
+      // ————— LE FICHIER N'EST JAMAIS REMPLACÉ PAR UN ÉTAT MOINS COMPLET —————
       //
-      // MESURÉ AU RENDU, sur le fichier livré : navigateur vide en espace d'essai, une
-      // sauvegarde écrite sous l'ancien nom, de cinq blocs (un portefeuille, un index de séries, des
-      // bougies). « Choisir le fichier de sauvegarde », ce fichier choisi → il n'en portait
-      // plus qu'UN, la session vide. Le bouton qui accueille quelqu'un qui arrive SANS ses
-      // données est celui qui détruisait la seule copie qu'il avait : il croyait charger, il
-      // écrivait. Et la même écriture repart seule chaque minute, donc un navigateur dont le
-      // stockage a été vidé écrasait aussi la sauvegarde au premier battement.
+      // MESURÉ AU RENDU sur 260922 : « Choisir le fichier de sauvegarde » sur une sauvegarde
+      // existante, navigateur vide — le fichier de cinq blocs n'en portait plus qu'UN. Et la
+      // même écriture repart seule chaque minute. 260926 refusait d'écrire quand le
+      // navigateur n'avait AUCUN bloc lourd ; le trou restait ouvert dès qu'il en avait un :
+      // le stockage local vidé et IndexedDB gardé, les portefeuilles partaient au premier
+      // battement, sans un clic.
       //
-      // La décision se prend sur ce qui a été ÉCRIT (règle 1), au dernier moment où elle est
-      // réversible : le fichier de travail est plein, l'original est intact tant que
-      // `close()` n'a pas eu lieu, et `abort()` le laisse tel quel. On ne prédit rien ; on
-      // compare ce qu'on vient de produire à ce qui était là.
+      // La règle est désormais la bonne, et elle n'a pas de seuil : avant la PREMIÈRE
+      // écriture dans un fichier, il est relu, et toute clé qu'il porte sans que le
+      // navigateur l'ait — ni l'ait SUPPRIMÉE, ce que dit la trace — est remise ici avant
+      // d'écrire. Le fichier ne perd donc que ce que l'utilisateur a supprimé. S'il ne peut
+      // pas être relu en entier, ou qu'une clé ne peut pas être remise, rien n'est écrit, et
+      // la phrase dit pourquoi. (Angle mort : voir `confronterFichier`.)
       //
-      // « PORTER », des deux côtés, se mesure pareil : un bloc lourd — une série de bougies
-      // ou un scan, les clés `gros:` que seules ces deux familles produisent. La première
-      // forme de cette garde comparait des TAILLES (« le fichier est plus gros que ce qu'on
-      // écrit ») : le banc l'a fait passer au vert sur l'écrasement même qu'elle visait, la
-      // session vide d'un navigateur d'essai pesant 3 025 octets et la sauvegarde du banc
-      // 370. La taille était un substitut du contenu — la règle 1, dans la garde écrite
-      // contre elle.
-      //
-      // ANGLE MORT, en tête (règle 9) : un navigateur qui ne garderait que des portefeuilles,
-      // sans une série ni un scan, est traité comme vide ; et quelqu'un qui VEUT vider son
-      // fichier doit en choisir un autre. Un fichier CHIFFRÉ est traité comme plein — son
-      // contenu ne se lit pas sans la phrase, donc rien ne dit qu'il est vide.
-      let avant = null;
-      try { const f0 = await h.getFile(); avant = { octets: f0.size || 0, porte: await this.fichierPorteBlocs(f0) }; }
-      catch (eF) { avant = null; }
+      // Un refus n'est pas retenté à chaque minute — relire un fichier de plusieurs
+      // centaines de mégaoctets pour refuser au même endroit ne sert à rien ; il l'est au
+      // geste (`force`), comme la reprise après deux échecs.
+      let remis = null;
+      if (this._confronte !== h) {
+        if (!force && this._refusConfronte === h) return;
+        const c = await this.confronterFichier(h);
+        if (!c.ok) {
+          this._refusConfronte = h;
+          this.setState({ autoAttente: true, autoMsg: c.msg });
+          return;
+        }
+        this._confronte = h;
+        this._refusConfronte = null;
+        remis = c.msg || null;
+      }
+      // les traces antérieures à CETTE écriture : une suppression faite pendant qu'elle
+      // tourne doit survivre jusqu'à la suivante
+      const effaceesAvant = [...(await this.lireEffacees())];
       w = await h.createWritable();
       // au FIL, comme l'export : la chaîne unique du dump entier refaisait deux
       // fois le stockage en mémoire — chaque minute, à chaque sauvegarde
-      const bilan = await this.ecrireExportAu(w,
+      await this.ecrireExportAu(w,
         '"outil":"vuna","version":1,"date":' + JSON.stringify(new Date().toISOString()) + ',');
-      if (!bilan.nG && avant && avant.porte) {
-        await w.abort();
-        w = null;                     // avorté : le finally n'a plus rien à faire
-        this.setState({ autoAttente: true, autoMsg: this.REFUS_ECRASER(h.name, avant.octets) });
-        return;
-      }
       await w.close();
       w = null;                       // fermé : le finally n'a plus rien à avorter
+      this.oublierEffacees(effaceesAvant);
       // `_autoTaille` est partie avec la vérification : elle n'avait qu'elle pour
       // lecteur. Un producteur sans consommateur pèse dans l'artefact et fait
       // croire à une fonction — la taille du dernier fichier voyage déjà avec la
@@ -21028,7 +21367,7 @@ GROUPES = {
       this._autoEchecs = 0;
       this.setState({ autoNom: h.name, autoAttente: false,
         autoHeure: new Date().toLocaleTimeString('fr-FR').slice(0, 5),
-        autoT: Date.now(), autoMsg: null });
+        autoT: Date.now(), autoMsg: remis });
     } catch (e) {
       // ICI une écriture a réellement été tentée (createWritable/write) : dire
       // qu'elle a échoué est exact — c'est un événement, pas un état supposé
@@ -21085,39 +21424,6 @@ GROUPES = {
   // appelante, et une phrase qui dit un déficit n'a plus d'objet quand plus rien
   // ne prétend le mesurer. Ce que le produit dit désormais est ce qu'il a
   // observé — l'écriture a échoué — et jamais ce qu'il aurait prédit.
-  // Le fichier existant porte-t-il un bloc lourd ? Lu AU FIL et arrêté au premier trouvé :
-  // une sauvegarde de plusieurs centaines de mégaoctets ne se relit pas d'un bloc (le
-  // plafond de chaîne du navigateur est mesuré entre 461 et 482 millions d'octets), et les
-  // blocs lourds suivent les petites clés, donc la réponse arrive tôt. Une clé n'est
-  // reconnue qu'en position de CLÉ — précédée de `{` ou `,` —, jamais dans une valeur, où
-  // le guillemet serait échappé.
-  async fichierPorteBlocs(f) {
-    if (!f || !f.size) return false;
-    const lecteur = f.stream().getReader();
-    const dec = new TextDecoder();
-    let reste = '', debut = true;
-    try {
-      for (;;) {
-        const { done, value } = await lecteur.read();
-        if (done) return false;
-        const txt = reste + dec.decode(value, { stream: true });
-        if (debut) {
-          if (/"(?:vuna_chiffre|vena_chiffre|sivula_chiffre)"\s*:/.test(txt.slice(0, 400))) return true;
-          debut = false;
-        }
-        if (/[{,]"gros:/.test(txt)) return true;
-        reste = txt.slice(-8);
-      }
-    } finally { try { lecteur.cancel(); } catch (eC) {} }
-  }
-  // La phrase du refus, UNE fois : elle dit ce qui n'a PAS été fait, pourquoi, et les deux
-  // gestes — celui que la personne voulait probablement faire, et l'autre.
-  REFUS_ECRASER(nom, octets) {
-    return 'Rien n\u2019a été écrit dans ' + (nom || 'ce fichier') + ' : il contient déjà une '
-      + 'sauvegarde (' + this.taille(octets) + ') et ce navigateur ne porte encore ni série ni '
-      + 'scan — l\u2019écrire l\u2019aurait remplacée par un fichier vide. Pour la recharger : '
-      + '« Importer mes données ». Pour sauvegarder ailleurs, choisissez un autre nom de fichier.';
-  }
   PAUSE_AUTO(cause) {
     return 'La sauvegarde automatique est en pause' + (cause ? ' \u2014 ' + cause : '') + '.';
   }
@@ -21511,46 +21817,115 @@ GROUPES = {
   // « Remplacer » écrit tout ; « Fusionner » n'écrit que les clés ABSENTES d'ici, donc
   // rien de ce qui existe déjà n'est touché. C'est la seule fusion honnête sans
   // réconcilier deux historiques de scan, et l'écran le dit en toutes lettres.
+  //
+  // Le fichier est RELU au fil — l'examen n'a gardé que ses comptes, jamais son contenu :
+  // tenir `donnees` entre l'examen et le clic, c'était tenir le fichier entier en mémoire,
+  // précisément chez ceux dont la sauvegarde est la plus lourde.
   async appliquerImport(mode) {
     const d = this.state.dlgImport;
     if (!d) return;
     this.setState({ dlgImport: null });
-    let n = 0, sautes = 0;
-    for (const [k0, v] of Object.entries(d.donnees)) {
-      const k = this.cleVersNeuf(k0);
-      if (k.startsWith('gros:')) {
-        const cleG = k.slice(5);
-        if (mode === 'fusion') {
-          let deja = null;
-          try { deja = await this.grosGet(cleG); } catch (e) {}
-          if (deja) { sautes++; continue; }
-        }
-        // deux formes acceptées, sans date limite : la chaîne (exports d'avant
-        // 260915.12) et l'objet brut (le format d'export courant)
-        try { await this.grosSet(cleG, typeof v === 'string' ? JSON.parse(v) : v); n++; } catch (e) {}
-        continue;
-      }
-      if (mode === 'fusion' && localStorage.getItem(k) !== null) { sautes++; continue; }
-      try { localStorage.setItem(k, v); n++; } catch (e) {}
+    const r = await this.ecrireDepuisSauvegarde(d.fichier, { mode });
+    const { nSeries, etat } = await this.rechargerDepuisStockage();
+    let msg = (mode === 'fusion' ? 'Fusion : ' : 'Remplacement : ') + r.n + ' blocs écrits'
+      + (r.sautes ? ', ' + r.sautes + ' déjà présents et donc conservés' : '')
+      + ' — fichier daté du ' + (d.date || '?') + '.'
+      + (nSeries ? ' ' + nSeries + ' séries de bougies remises en place.' : '');
+    if (r.erreur || r.echecs.length) {
+      msg += ' ' + (r.erreur || '') + (r.echecs.length ? ' ' + r.echecs.length
+        + ' blocs ont été REFUSÉS par le stockage du navigateur (plein ?) : ils ne sont pas ici.' : '');
     }
+    // UN FICHIER CHOISI POUR LA SAUVEGARDE AUTOMATIQUE n'est adopté qu'ICI, après le geste :
+    // l'espace porte désormais tout ce que le fichier portait, donc l'écrire ne retire rien.
+    // Un import incomplet ne l'adopte pas — la première écriture retirerait du fichier ce
+    // que le navigateur a refusé de prendre.
+    if (d.adopter) {
+      if (r.erreur || r.echecs.length) {
+        msg += ' Le fichier n’est PAS devenu votre sauvegarde automatique : l’écrire '
+          + 'maintenant lui retirerait ce qui n’a pas pu être rechargé.';
+      } else {
+        await this.adopterFichierAuto(d.adopter);
+      }
+    }
+    this.setState({ ...etat, sauvMsg: msg }, () => this.lancerTest());
+    if (d.adopter && !r.erreur && !r.echecs.length) await this.sauverAuto(true);
+  }
+  // ————— ÉCRIRE DANS LE STOCKAGE DEPUIS UNE SAUVEGARDE, AU FIL —————
+  // UNE fonction pour les trois chemins qui le font — l'import, la confrontation du fichier
+  // automatique, la reprise d'un scan évincé : trois copies du décodage divergeraient à la
+  // première forme de valeur qu'une seule apprendrait.
+  //
+  // `mode` : « remplace » écrit tout, « fusion » saute ce qui existe ; `seulement` (un
+  // ensemble de clés neuves) n'écrit que celles-là, qu'elles existent ou non. La décision
+  // se prend sur la CLÉ, avant que la valeur soit assemblée : une série sautée ne coûte rien.
+  //
+  // Deux formes de valeur, sans date limite : un bloc lourd est un objet JSON (le format
+  // courant) ou une chaîne qui en contient un (les exports d'avant 260915.12) ; une petite
+  // clé est une chaîne JSON — la valeur du stockage, telle quelle.
+  async ecrireDepuisSauvegarde(fichier, { mode, seulement } = {}) {
+    const presentes = mode === 'fusion' ? await this.clesPresentes() : null;
+    const aEcrire = (k) => (seulement ? seulement.has(k) : !(presentes && presentes.has(k)));
+    let n = 0, sautes = 0, erreur = null;
+    const echecs = [];
+    try {
+      for await (const x of lireSauvegardeAuFil(fichier,
+        { garder: (c, entete) => !entete && aEcrire(this.cleVersNeuf(c)) })) {
+        if (x.champ !== undefined) continue;
+        const k = this.cleVersNeuf(x.cle);
+        if (x.valeur === null) { if (!seulement) sautes++; continue; }
+        let v;
+        try { v = JSON.parse(x.valeur); } catch (e) { echecs.push(k); continue; }
+        if (k.startsWith('gros:')) {
+          let o = v;
+          if (typeof v === 'string') { try { o = JSON.parse(v); } catch (e) { echecs.push(k); continue; } }
+          if (await this.grosSet(k.slice(5), o)) n++; else echecs.push(k);
+          continue;
+        }
+        try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); n++; }
+        catch (e) { echecs.push(k); }
+      }
+    } catch (e) {
+      // le fichier a changé entre l'examen et le geste, ou il se termine mal : ce qui a
+      // été écrit l'est, et la phrase dit que la suite ne l'est pas
+      erreur = 'La lecture s’est arrêtée en route (' + this.causeLecture(e) + ') : la suite du fichier n’a pas été lue.';
+    }
+    return { n, sautes, echecs, erreur };
+  }
+  // Ce que le stockage porte, clé par clé, sous la forme où l'export l'écrit : les petites
+  // clés du stockage local, et `gros:` devant chaque bloc d'IndexedDB. Seules les clés
+  // qu'un export emporterait sont retenues — le reste n'est jamais comparé à un fichier.
+  async clesPresentes() {
+    const s = new Set();
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && this.estCleExportee(k)) s.add(k);
+      }
+    } catch (e) {}
+    for (const k of await this.clesGros()) {
+      const g = 'gros:' + String(k);
+      if (this.estCleExportee(g)) s.add(g);
+    }
+    return s;
+  }
+  // Relire l'état depuis le stockage, après qu'une sauvegarde y a écrit. Rend le nombre de
+  // séries remises et l'état à poser — l'appelant choisit sa phrase.
+  async rechargerDepuisStockage() {
     const session = this.lireSession(), scanSauve = await this.lireScanComplet(),
       reg = this.lireRegimes(), pf = this.lirePf();
+    // le bloc écrit fait foi : les contrôles de l'espace d'arrivée, pas ceux d'avant
     this._poseT = 0;
-    this.chargerHasardFaits();
-    this.chargerHasardCor();
+    await this.chargerHasardFaits();
+    await this.chargerHasardCor();
     if (scanSauve) this.appliquerScan(this.reprendreScan(scanSauve));
     this.baremes = {}; await this.chargerBaremes();
     const nSeries = await this.reprendreSeries();
-    this.setState({
+    return { nSeries, etat: {
       ...(session || {}),
       ...(reg ? { regimes: reg } : {}),
       ...(pf ? { pfs: pf.pfs, favoris: pf.favoris, valides: pf.valides || [] } : {}),
       runs: this.lireRuns(),
-      sauvMsg: (mode === 'fusion' ? 'Fusion : ' : 'Remplacement : ') + n + ' blocs écrits'
-        + (sautes ? ', ' + sautes + ' déjà présents et donc conservés' : '')
-        + ' — fichier daté du ' + (d.date || '?') + '.'
-        + (nSeries ? ' ' + nSeries + ' séries de bougies remises en place.' : ''),
-    }, () => this.lancerTest());
+    } };
   }
   // l'heure d'une entrée du registre : courte, du plus près au plus loin
   quandCourt(t) {
@@ -21585,123 +21960,170 @@ GROUPES = {
   // l'application : le contenu d'un espace est le travail de plusieurs semaines, et rien
   // ne le rend. On lit donc le fichier, on montre ce qu'il porte, on montre ce que
   // l'espace actuel porte, et on laisse trois issues.
-  async examinerImport(fichier) {
+  //
+  // `adopter` : la poignée choisie pour la sauvegarde automatique. Elle ne devient celle
+  // de l'application qu'après « Fusionner » ou « Remplacer » — jamais avant le geste.
+  async examinerImport(fichier, adopter) {
     if (!fichier) return;
     // ————— « FICHIER ILLISIBLE » RECOUVRAIT CINQ CAUSES, ET CHACUNE DEMANDE UN AUTRE GESTE —————
     //
     // Un seul `catch` rendait la même phrase pour un fichier vide, un fichier tronqué,
     // un fichier qui n'est pas du JSON, un fichier trop long pour être lu d'un bloc, et
-    // une exception de l'examen lui-même — c'est le conseil attrape-tout, sur l'écran où
-    // il coûte le plus cher : celui où quelqu'un tient sa seule sauvegarde. MESURÉ au
-    // rendu : une sauvegarde Véna VALIDE de 587 Mo rendait « Fichier illisible. », parce
-    // que `text()` refuse de construire un texte aussi long (seuil mesuré sur ce Chromium
-    // entre 461 et 482 millions d'octets — l'export, lui, écrit au fil et n'a pas de
-    // plafond). Chaque étape échoue désormais sous son propre nom, et la cause se décide
-    // sur ce qui est OBSERVÉ — la taille, la fin du texte —, jamais sur le libellé d'une
-    // exception, qui change d'un navigateur à l'autre.
-    const lu = await this.lireSauvegarde(fichier);
-    if (!lu.ok) return this.setState({ sauvMsg: lu.msg });
+    // une exception de l'examen lui-même. MESURÉ au rendu : une sauvegarde VALIDE de
+    // 587 Mo rendait « Fichier illisible. », parce que `text()` refuse de construire un
+    // texte aussi long (seuil mesuré sur ce Chromium entre 461 et 482 millions d'octets).
+    //
+    // CE REFUS-LÀ N'EXISTE PLUS : le fichier se lit AU FIL, une entrée à la fois, comme
+    // l'export l'écrit — la taille n'a plus de plafond. Les quatre autres causes restent
+    // nommées, et elles se décident sur ce que le lecteur OBSERVE, jamais sur le libellé
+    // d'une exception, qui change d'un navigateur à l'autre.
+    const ex = await this.examinerSauvegarde(fichier);
+    // choisi pour la sauvegarde automatique, un fichier refusé le dit LÀ où on l'a choisi,
+    // et dit qu'il n'est pas devenu la sauvegarde : rien n'y a été écrit
+    if (!ex.ok) {
+      return this.setState(adopter
+        ? { autoMsg: 'Rien n’a été écrit dans ' + (fichier.name || 'ce fichier') + ', et il n’est pas devenu '
+          + 'votre sauvegarde automatique. ' + ex.msg + ' Pour la sauvegarde automatique, choisissez un autre nom de fichier.' }
+        : { sauvMsg: ex.msg });
+    }
+    // un fichier CHIFFRÉ demande d'abord sa phrase : rien n'est lu avant. Choisi pour la
+    // sauvegarde automatique, il n'est pas adopté : l'écrire le remplacerait par un fichier
+    // en clair, qui n'est pas ce que la personne avait choisi de garder.
+    if (ex.chiffre) {
+      if (adopter) {
+        return this.setState({ autoMsg: 'Rien n’a été écrit dans ' + (fichier.name || 'ce fichier')
+          + ' : c’est une sauvegarde CHIFFRÉE. Pour la recharger : « Importer mes données », '
+          + 'avec sa phrase. Pour la sauvegarde automatique, choisissez un autre nom de fichier.' });
+      }
+      this.setState({ dlgChiffre: { nom: fichier.name, objet: ex.chiffre, phrase: '', err: null } });
+      return;
+    }
+    const ici = {
+      series: (this.state.deposes || []).length,
+      scans: (this.state.archives || []).length,
+      configs: this.lignesScan.length,
+      pfs: (this.state.pfs || []).length,
+      lignes: this.normValides(this.state.valides || []).length,
+    };
+    const c = ex.compte;
+    this.setState({ dlgImport: {
+      nom: fichier.name, date: (ex.entete.date || '').slice(0, 10),
+      compte: c.comptes.map((x) => this.nomCourtier(x)).join(', '),
+      blocs: c.blocs, series: c.series, scans: c.scans, configs: c.configs,
+      pfs: c.pfs, lignes: c.lignes, ici, fichier, adopter: adopter || null },
+      // l'écran de l'import vit dans le tiroir : choisi depuis la barre, il resterait fermé
+      ...(adopter ? { tiroir: true, tiroirOnglet: 'donnees' } : {}) });
+  }
+  // ————— L'EXAMEN, AU FIL : les comptes, jamais le contenu —————
+  // Rend { ok:false, msg } — la cause nommée —, { ok:true, chiffre: objet } pour un fichier
+  // chiffré, ou { ok:true, entete, compte }. Seules les valeurs qui se COMPTENT sont
+  // assemblées — les scans et les portefeuilles ; une série n'est jamais lue ici.
+  async examinerSauvegarde(fichier) {
+    if (!fichier || !fichier.size) {
+      return { ok: false, msg: 'Ce fichier est vide (0 octet) : l’écriture qui devait le remplir '
+        + 'n’a pas abouti. Il n’y a rien à recharger — cherchez une copie plus ancienne.' };
+    }
+    const entete = {};
+    let chiffre = false, dansDonnees = false;
+    const c = { blocs: 0, series: 0, scans: 0, configs: 0, pfs: 0, lignes: 0, comptes: [] };
+    // Les clés portent l'espace ET le compte entre la base et le suffixe :
+    // « gros:vena.series.v1.client.demo|DEMO-TECH ». Chercher « base| » ne trouvait
+    // donc rien, et le dialogue annonçait « 0 série » devant un fichier de 7 Mo.
+    const compte = (k) => k.startsWith('gros:' + this.CLE_SCAN) || k.startsWith(this.CLE_PF);
     try {
-      const b = lu.objet;
-      // un fichier CHIFFRÉ demande d'abord sa phrase : rien n'est lu avant
-      if (b && (b.vuna_chiffre === 1 || b.vena_chiffre === 1 || b.sivula_chiffre === 1)) {
-        this.setState({ dlgChiffre: { nom: fichier.name, objet: b, phrase: '', err: null } });
-        return;
-      }
-      // l'enveloppe refusée dit CE QU'ELLE A TROUVÉ : trois défauts distincts, trois phrases
-      if (!b || typeof b !== 'object' || !b.outil) {
-        return this.setState({ sauvMsg: 'Ce fichier n\u2019est pas une sauvegarde Vuna : il n\u2019a pas '
-          + 'd\u2019en-tête (champ « outil » absent).' });
-      }
-      if (OUTILS_LUS.indexOf(b.outil) < 0) {
-        return this.setState({ sauvMsg: 'Ce fichier vient de « ' + String(b.outil).slice(0, 40)
-          + ' », pas de Vuna : rien n\u2019a été lu.' });
-      }
-      if (!b.donnees) {
-        return this.setState({ sauvMsg: 'Ce fichier porte un en-tête Vuna mais aucune donnée '
-          + '(champ « donnees » absent) : il n\u2019y a rien à recharger.' });
-      }
-      // On compte SANS rien écrire : les clés du dump disent déjà ce qu'il porte.
-      const d = b.donnees;
-      const cles = Object.keys(d);
-      const lireJ = (k) => { const v = d[k]; if (v && typeof v === 'object') return v; try { return JSON.parse(v); } catch (e) { return null; } };
-      // Les clés portent l'espace ET le compte entre la base et le suffixe :
-      // « gros:vena.series.v1.client.demo|DEMO-TECH ». Chercher « base| » ne trouvait
-      // donc rien, et le dialogue annonçait « 0 série » devant un fichier de 7 Mo.
-      const estUn = (k, base, gros) => (gros ? k.startsWith('gros:' + base) : k.startsWith(base));
-      const nSeries = cles.filter((k) => estUn(k, this.CLE_SERIES, true) && k.includes('|')).length;
-      let nScans = 0, nConfigs = 0, nPfs = 0, nLignes = 0;
-      const comptes = [];
-      for (const k of cles) {
-        if (estUn(k, this.CLE_SCAN, true)) {
-          const v = lireJ(k);
-          const arch = (v && v.archives) || [];
-          nScans += arch.length;
-          nConfigs += (v && v.lignes && v.lignes.n) || (v && Array.isArray(v.lignes) ? v.lignes.length : 0);
+      for await (const x of lireSauvegardeAuFil(fichier,
+        { garder: (k, ent) => (ent ? true : compte(this.cleVersNeuf(k))) })) {
+        if (x.champ !== undefined) {
+          let v = null;
+          try { v = JSON.parse(x.valeur); } catch (e) { return { ok: false, msg: this.MSG_LECTURE('syntaxe', fichier) }; }
+          entete[x.champ] = v;
+          if (this.estChampChiffre(x.champ)) chiffre = true;
+          continue;
         }
-        if (estUn(k, this.CLE_PF, false)) {
-          const v = lireJ(k);
-          if (v) { nPfs += (v.pfs || []).length; nLignes += (v.valides || []).length; }
+        // la première entrée de `donnees` : l'en-tête est lu, l'enveloppe se juge ICI —
+        // un fichier étranger ne se lit pas jusqu'au bout pour être refusé
+        if (!dansDonnees) {
+          dansDonnees = true;
+          const refus = this.refusEnveloppe(entete, true);
+          if (refus) return { ok: false, msg: refus };
+        }
+        const k = this.cleVersNeuf(x.cle);
+        c.blocs += 1;
+        if (k.startsWith('gros:' + this.CLE_SERIES) && k.includes('|')) c.series += 1;
+        if (x.valeur !== null) {
+          let v = null;
+          try { v = JSON.parse(x.valeur); if (typeof v === 'string') v = JSON.parse(v); } catch (e) { v = null; }
+          if (k.startsWith('gros:' + this.CLE_SCAN) && v) {
+            c.scans += (v.archives || []).length;
+            c.configs += (v.lignes && v.lignes.n) || (Array.isArray(v.lignes) ? v.lignes.length : 0);
+          }
+          if (k.startsWith(this.CLE_PF) && v) { c.pfs += (v.pfs || []).length; c.lignes += (v.valides || []).length; }
         }
         // Un dump peut porter PLUSIEURS comptes : annoncer le premier trouvé désignait
         // « fxpro » devant un fichier dont toutes les données sont sur « demo ».
         const m = k.replace(/^gros:/, '').match(/\.(fxpro|compte\d|demo)(\||$)/);
-        if (m && !comptes.includes(m[1])) comptes.push(m[1]);
+        if (m && !c.comptes.includes(m[1])) c.comptes.push(m[1]);
       }
-      const ici = {
-        series: (this.state.deposes || []).length,
-        scans: (this.state.archives || []).length,
-        configs: this.lignesScan.length,
-        pfs: (this.state.pfs || []).length,
-        lignes: this.normValides(this.state.valides || []).length,
-      };
-      this.setState({ dlgImport: {
-        nom: fichier.name, date: (b.date || '').slice(0, 10),
-        compte: comptes.map((c) => this.nomCourtier(c)).join(', '),
-        blocs: cles.length, series: nSeries, scans: nScans, configs: nConfigs,
-        pfs: nPfs, lignes: nLignes, ici, donnees: d } });
     } catch (e) {
-      // ici le fichier s'est LU et PARSÉ : ce qui jette est l'examen, donc Vuna
-      this.journaliserErreur('examinerImport : ' + ((e && e.name) || '') + ' ' + ((e && e.message) || e));
-      this.setState({ sauvMsg: 'Le fichier se lit, mais son examen a échoué ('
-        + ((e && e.name) || 'erreur') + ') : c\u2019est un défaut de Vuna, pas de votre fichier. '
-        + 'Gardez-le intact ; le diagnostic a noté l\u2019erreur.' });
+      return { ok: false, msg: this.MSG_LECTURE(e && e.cause, fichier, e) };
     }
+    if (chiffre) return { ok: true, chiffre: entete };
+    if (!dansDonnees) {
+      const refus = this.refusEnveloppe(entete, false);
+      if (refus) return { ok: false, msg: refus };
+    }
+    return { ok: true, entete, compte: c };
   }
-  // Lire une sauvegarde en nommant l'étape qui échoue. Rend { ok, objet } ou { ok:false, msg }.
-  async lireSauvegarde(fichier) {
-    const t = this.taille(fichier.size || 0);
-    if (!fichier.size) {
-      return { ok: false, msg: 'Ce fichier est vide (0 octet) : l\u2019écriture qui devait le remplir '
-        + 'n\u2019a pas abouti. Il n\u2019y a rien à recharger — cherchez une copie plus ancienne.' };
-    }
-    let texte;
-    try { texte = await fichier.text(); } catch (e) {
-      const nom = (e && e.name) || 'erreur';
-      return { ok: false, msg: fichier.size >= this.PLAFOND_LECTURE
-        ? 'Ce fichier (' + t + ') est trop long pour que ce navigateur le lise d\u2019un bloc ('
-          + nom + '). Il n\u2019est pas abîmé : gardez-le intact, et ne quittez pas l\u2019adresse '
-          + 'où vos données vivent encore tant qu\u2019il n\u2019a pas pu être rechargé.'
-        : 'Le navigateur a refusé de lire ce fichier (' + nom + ', ' + t + ') : il a sans doute '
-          + 'été modifié ou déplacé depuis que vous l\u2019avez choisi. Choisissez-le à nouveau.' };
-    }
-    try { return { ok: true, objet: JSON.parse(texte) }; } catch (e) {
-      const debut = texte.replace(/^\uFEFF/, '').trimStart();
-      if (debut[0] !== '{') {
-        return { ok: false, msg: 'Ce fichier n\u2019est pas une sauvegarde : il commence par « '
-          + debut.slice(0, 24).replace(/\s+/g, ' ') + ' » au lieu d\u2019un objet JSON.' };
-      }
-      return { ok: false, msg: texte.trimEnd().endsWith('}')
-        ? 'Ce fichier est abîmé en son milieu (JSON invalide, ' + t + ') : rien n\u2019a été lu.'
-        : 'Ce fichier s\u2019arrête avant sa fin (' + t + ') : l\u2019écriture qui l\u2019a produit a été '
-          + 'interrompue. Rien n\u2019a été lu — cherchez une copie plus ancienne.' };
-    }
+  // les trois formes du champ qui marque un fichier chiffré, lues à un seul endroit
+  estChampChiffre(ch) {
+    return ch === 'vuna_chiffre' || ch === 'vena_chiffre' || ch === 'sivula_chiffre';
   }
-  // Le plus long fichier que `text()` a su lire, mesuré sur Chromium : 461 373 606 octets
-  // lus, 482 345 126 refusés. Au-dessus, un refus de lecture est attribué à la TAILLE ;
-  // en dessous, à un fichier changé depuis son choix. Seuil de ce navigateur-là : un autre
-  // peut refuser plus tôt, et c'est pourquoi le message nomme aussi l'exception et la taille.
-  PLAFOND_LECTURE = 461000000;
+  // l'enveloppe refusée dit CE QU'ELLE A TROUVÉ : trois défauts distincts, trois phrases.
+  // `entrees` : au moins une entrée de `donnees` a été lue — le lecteur ne rend pas le
+  // conteneur lui-même, donc « donnees » vide et « donnees » absent se disent pareil.
+  refusEnveloppe(b, entrees) {
+    if (Object.keys(b).some((ch) => this.estChampChiffre(ch))) return null;
+    if (!b.outil) {
+      return 'Ce fichier n’est pas une sauvegarde Vuna : il n’a pas '
+        + 'd’en-tête (champ « outil » absent).';
+    }
+    if (OUTILS_LUS.indexOf(b.outil) < 0) {
+      return 'Ce fichier vient de « ' + String(b.outil).slice(0, 40) + ' », pas de Vuna : rien n’a été lu.';
+    }
+    if (!entrees) {
+      return 'Ce fichier porte un en-tête Vuna mais aucune donnée '
+        + '(champ « donnees » absent ou vide) : il n’y a rien à recharger.';
+    }
+    return null;
+  }
+  // La cause d'une lecture qui s'arrête, en quelques mots — pour les phrases qui la citent.
+  causeLecture(e) {
+    const c = e && e.cause;
+    if (c === 'vide') return 'fichier vide';
+    if (c === 'pasObjet') return 'ce n’est pas un objet JSON';
+    if (c === 'tronque') return 'le fichier s’arrête avant sa fin';
+    if (c === 'syntaxe') return 'le fichier est abîmé en son milieu';
+    return 'le navigateur a refusé de le lire' + (e && e.name && e.name !== 'Error' ? ', ' + e.name : '');
+  }
+  // La phrase entière d'une lecture qui échoue, UNE par cause : chacune demande un autre geste.
+  MSG_LECTURE(cause, fichier, e) {
+    const t = this.taille((fichier && fichier.size) || 0);
+    if (cause === 'vide') {
+      return 'Ce fichier ne contient que des blancs : l’écriture qui devait le remplir '
+        + 'n’a pas abouti. Il n’y a rien à recharger — cherchez une copie plus ancienne.';
+    }
+    if (cause === 'pasObjet') {
+      return 'Ce fichier n’est pas une sauvegarde : il ne commence pas par un objet JSON ('
+        + t + ').';
+    }
+    if (cause === 'syntaxe') return 'Ce fichier est abîmé en son milieu (JSON invalide, ' + t + ') : rien n’a été lu.';
+    if (cause === 'tronque') {
+      return 'Ce fichier s’arrête avant sa fin (' + t + ') : l’écriture qui l’a produit a été '
+        + 'interrompue. Rien n’a été lu — cherchez une copie plus ancienne.';
+    }
+    return 'Le navigateur a refusé de lire ce fichier (' + ((e && e.name) || 'erreur') + ', ' + t
+      + ') : il a sans doute été modifié ou déplacé depuis que vous l’avez choisi. Choisissez-le à nouveau.';
+  }
   async dechiffrerImport() {
     const d = this.state.dlgChiffre;
     if (!d) return;
@@ -21715,41 +22137,6 @@ GROUPES = {
     // d'écrasement silencieux
     await this.examinerImport(new File([r.texte], d.nom.replace(/\.json$/i, '') + '-dechiffre.json',
       { type: 'application/json' }));
-  }
-  async importerTout(fichier) {
-    if (!fichier) return;
-    try {
-      const b = JSON.parse(await fichier.text());
-      if (!b || OUTILS_LUS.indexOf(b.outil) < 0 || !b.donnees) {
-        return this.setState({ sauvMsg: 'Ce fichier ne vient pas de Vuna.' });
-      }
-      let n = 0;
-      for (const [k0, v] of Object.entries(b.donnees)) {
-        const k = this.cleVersNeuf(k0);
-        // les scans complets repartent dans IndexedDB, pas dans localStorage
-        if (k.startsWith('gros:')) {
-          try { await this.grosSet(k.slice(5), typeof v === 'string' ? JSON.parse(v) : v); n++; } catch (e) {}
-          continue;
-        }
-        try { localStorage.setItem(k, v); n++; } catch (e) {}
-      }
-      const session = this.lireSession(), scanSauve = await this.lireScanComplet(), reg = this.lireRegimes(), pf = this.lirePf();
-      // import volontaire : le bloc importé fait foi, on repart de zéro
-      this._poseT = 0;
-      this.chargerHasardFaits();
-      this.chargerHasardCor();
-      if (scanSauve) this.appliquerScan(this.reprendreScan(scanSauve));
-      this.baremes = {}; await this.chargerBaremes();
-      const nSeries = await this.reprendreSeries();
-      this.setState({
-        ...(session || {}),
-        ...(reg ? { regimes: reg } : {}),
-        ...(pf ? { pfs: pf.pfs, favoris: pf.favoris, valides: pf.valides || [] } : {}),
-        runs: this.lireRuns(),
-        sauvMsg: n + ' blocs réimportés — daté du ' + (b.date || '').slice(0, 10) + '.'
-          + (nSeries ? ' ' + nSeries + ' séries de bougies remises en place.' : ''),
-      }, () => this.lancerTest());
-    } catch (e) { this.setState({ sauvMsg: 'Fichier illisible.' }); }
   }
 
   CLE_REGIMES = 'vena.regimes.v1';
@@ -23553,7 +23940,14 @@ GROUPES = {
           impRemplaceAide: 'Écrase l’espace actuel par le contenu du fichier. Ce que vous avez ici et qui n’est pas dans le fichier est perdu.',
           fusionnerImport: () => this.appliquerImport('fusion'),
           remplacerImport: () => this.appliquerImport('remplace'),
-          annulerImport: () => this.setState({ dlgImport: null }),
+          annulerImport: () => this.setState(d && d.adopter
+            ? { dlgImport: null, autoMsg: 'Rien n’a été écrit dans ' + (d.nom || 'ce fichier')
+              + ' : il n’est pas devenu votre sauvegarde automatique.' }
+            : { dlgImport: null }),
+          aImpAdopte: !!(d && d.adopter),
+          impAdopte: d && d.adopter ? 'Vous avez choisi ce fichier pour la sauvegarde automatique : il est LU, '
+            + 'pas écrasé. Fusionner ou Remplacer le charge ici, puis il devient votre sauvegarde — et la '
+            + 'première écriture emporte tout ce qu’il portait.' : '',
         };
       })(),
       // ————— LES TROIS PORTES FACULTATIVES : l'utilisateur déclenche, et voit ce qui

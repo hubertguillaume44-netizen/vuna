@@ -282,12 +282,24 @@ test("une sauvegarde de l’ancienne version reste importable", () => {
   // renommages : trois noms acceptés pour deux renommages.
   assert.match(src, /const OUTILS_LUS = \['vuna', 'vena', 'simula'\];/,
     "la liste des noms d’outil acceptés doit être nommée, et porter les trois");
+  // UNE lecture de l'en-tête, et les chemins qui lisent une sauvegarde passent par elle :
+  // l'examen (import, choix du fichier automatique, reprise) et la confrontation avant
+  // écriture. Trois lectures écrites séparément étaient trois endroits où un renommage
+  // pouvait n'en basculer que deux.
   const lectures = src.match(/OUTILS_LUS\.indexOf\(b\.outil\) < 0/g) || [];
-  assert.equal(lectures.length, 3,
-    "les trois lectures doivent passer par la liste, vu " + lectures.length);
+  assert.equal(lectures.length, 1,
+    "l’en-tête doit se juger à UN endroit, vu " + lectures.length);
+  const autres = (src.match(/OUTILS_LUS\.indexOf\(/g) || []).length;
+  assert.equal(autres, 1, "une lecture de l’outil hors de la porte unique, vu " + autres);
+  for (const chemin of ["async examinerSauvegarde(", "async confronterFichier("]) {
+    const i = src.indexOf(chemin);
+    assert.ok(i > 0, "le chemin de lecture a disparu : " + chemin);
+    assert.match(src.slice(i, borne(src, "\n  }\n", i)), /this\.refusEnveloppe\(/,
+      chemin + " doit juger l’en-tête par la porte unique");
+  }
   assert.match(src, /OUTILS_LUS\.some\(function \(o\) \{ return t\.indexOf/,
     "la reconnaissance par l’enveloppe doit lire la même liste");
-  assert.match(src, /b\.vuna_chiffre === 1 \|\| b\.vena_chiffre === 1 \|\| b\.sivula_chiffre === 1/,
+  assert.match(src, /ch === 'vuna_chiffre' \|\| ch === 'vena_chiffre' \|\| ch === 'sivula_chiffre'/,
     "la sauvegarde chiffrée doit accepter les trois marqueurs");
   assert.match(src, /accept="application\/json,\.json,\.vuna,\.vena,\.sivula"/,
     "le champ d’import doit accepter les trois extensions");
@@ -303,8 +315,20 @@ test("un import ancien repose ses clés au nouveau préfixe", () => {
   // sans traduction, l'import annoncerait « 40 blocs réimportés » et l'écran resterait
   // vide : les clés reposées seraient celles que l'application ne lit plus
   assert.match(src, /cleVersNeuf\(k\) \{/, "la traduction de préfixe doit exister");
-  const appels = (src.match(/this\.cleVersNeuf\(k0\)/g) || []).length;
-  assert.equal(appels, 2, "les deux chemins d’import doivent traduire, vu " + appels);
+  // chaque clé lue dans une sauvegarde est traduite avant d'être jugée : les trois
+  // chemins qui lisent au fil (examen, écriture depuis la sauvegarde, confrontation)
+  let traduites = 0;
+  for (const chemin of ["async examinerSauvegarde(", "async ecrireDepuisSauvegarde(", "async confronterFichier("]) {
+    const i = src.indexOf(chemin);
+    assert.ok(i > 0, "le chemin de lecture a disparu : " + chemin);
+    const corps = src.slice(i, borne(src, "\n  }\n", i));
+    const lues = (corps.match(/\bx\.cle\b/g) || []).length;
+    const t = (corps.match(/this\.cleVersNeuf\(x\.cle\)/g) || []).length;
+    assert.ok(lues > 0, chemin + " ne lit plus aucune clé : la garde a perdu sa prise");
+    assert.equal(t, lues, chemin + " lit une clé de sauvegarde sans la traduire");
+    traduites += t;
+  }
+  assert.ok(traduites >= 3, "les chemins d’import doivent traduire, vu " + traduites);
   // le préfixe des gros blocs vit derrière « gros: »
   assert.match(src, /const g = 'gros:' \+ PREFIXE_ANCIEN;/,
     "les scans complets doivent être traduits aussi");
@@ -367,6 +391,6 @@ test("la façade de lecture ne ressuscite jamais une valeur neuve vide", () => {
   assert.match(corps, /if \(v !== null\) return v;/,
     "le repli doit s’effacer dès que la clé neuve existe, fût-elle vide");
   // et la suppression ne touche jamais la jumelle ancienne
-  assert.match(corps, /removeItem\(k\) \{ STOCK_BRUT\.removeItem\(k\); \}/,
+  assert.match(corps, /removeItem\(k\) \{ STOCK_BRUT\.removeItem\(k\); signalerEffacement\(k\); \}/,
     "la façade ne doit supprimer que la clé demandée");
 });

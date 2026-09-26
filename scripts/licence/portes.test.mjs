@@ -45,9 +45,11 @@ test("la page porte l'en-tête versionné et les mêmes constantes", () => {
     // limite — quelqu'un réimportera dans deux ans un fichier exporté aujourd'hui
     // l'enveloppe chiffrée s'assemble en MORCEAUX depuis l'export en tableau
     // (partiesExport — « Invalid string length ») : le marqueur écrit n'est plus
-    // l'objet `vuna_chiffre: 1` mais la chaîne JSON brute de l'en-tête — réancré
+    // l'objet `vuna_chiffre: 1` mais la chaîne JSON brute de l'en-tête — réancré.
+    // À la LECTURE, le marqueur se reconnaît à son nom de champ, lu au fil
+    // (`estChampChiffre`) — réancré une seconde fois quand la lecture est passée au fil
     for (const attendu of ['{"vuna_chiffre":1,', "PBKDF2-SHA256", "CHIFFRE_ITER = 600000",
-      "Perdre la phrase", "vuna_chiffre === 1", "b.sivula_chiffre === 1"]) {
+      "Perdre la phrase", "ch === 'vuna_chiffre'", "ch === 'sivula_chiffre'"]) {
       assert.ok(txt.includes(attendu), f + " ne porte plus « " + attendu + " »");
     }
     // le compteur est éteint par défaut, et rien n'est accumulé éteint

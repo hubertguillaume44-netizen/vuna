@@ -125,14 +125,28 @@ test("l'import accepte les DEUX formes de gros:, sans date limite", () => {
   // quelqu'un réimportera dans deux ans un fichier exporté avant le changement, où
   // chaque gros: était une CHAÎNE contenant du JSON. Même règle que l'import d'une
   // sauvegarde sous l'ancien nom de l'outil : les deux formes, sans date limite.
-  const sites = (APP.match(/typeof v === 'string' \? JSON\.parse\(v\) : v/g) || []).length;
-  assert.ok(sites >= 3,
-    sites + " site(s) d'import tolèrent les deux formes — il en faut au moins 3 "
-    + "(import en clair, import chiffré, reprise partielle) : un site qui ne parse "
-    + "que l'ancienne forme jette sur tout export récent, et réciproquement");
-  assert.ok(APP.includes("if (v && typeof v === 'object') return v;"),
-    "lireJ ne tolère plus la forme objet : les blocs non-gros du nouveau format "
-    + "arrivent déjà parsés, et lireJ les re-parserait en échouant");
+  //
+  // RÉANCRÉE (règle 14, deuxième issue) quand la lecture est passée au fil : il y avait
+  // trois sites qui décodaient chacun sa copie ; il n'y a plus qu'UN écrivain depuis une
+  // sauvegarde, `ecrireDepuisSauvegarde`, et les trois chemins l'appellent — l'import
+  // (clair ou déchiffré), la confrontation avant écriture, la reprise d'un scan évincé.
+  // L'invariant n'a pas bougé : les deux formes, à chaque chemin.
+  const i = APP.indexOf("async ecrireDepuisSauvegarde(");
+  assert.ok(i > 0, "l'écrivain unique depuis une sauvegarde a disparu — réancrez cette garde");
+  const corps = APP.slice(i, borne(APP, "\n  }\n", i));
+  assert.match(corps, /if \(typeof v === 'string'\) \{ try \{ o = JSON\.parse\(v\); \}/,
+    "l'écrivain ne tolère plus l'ancienne forme (le bloc en CHAÎNE) : un export d'avant "
+    + "260915.12 jetterait sur chaque bloc lourd");
+  for (const chemin of ["async appliquerImport(", "async confronterFichier(", "async repriseDepuisFichier("]) {
+    const j = APP.indexOf(chemin);
+    assert.ok(j > 0, "le chemin d'import a disparu : " + chemin);
+    assert.match(APP.slice(j, borne(APP, "\n  }\n", j)), /this\.ecrireDepuisSauvegarde\(/,
+      chemin + " n'écrit plus par l'écrivain unique : une seconde copie du décodage divergerait "
+      + "à la première forme de valeur qu'une seule apprendrait");
+  }
+  const decodes = (APP.match(/for await \(const x of lireSauvegardeAuFil\(/g) || []).length;
+  assert.equal(decodes, 3, "les lectures au fil sont " + decodes + " — examen, écrivain, "
+    + "confrontation : une quatrième décoderait peut-être à sa façon");
 });
 
 test("exporterTout est protégé, dit son échec, et tous ses appelants attendent", () => {
